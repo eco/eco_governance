@@ -1,4 +1,35 @@
-## Foundry
+# Eco Governance Repo
+
+This repo contains the code for the Eco Governance system. For now, this repository is limited to the migration of the old ECOx and ECO tokens and governance system to the new unified single token system. To access those contracts, please see the src/migration directory. To start up the enviroment, run:
+
+```sh
+forge install
+```
+
+There may be an issue with the libraries not being found in the `currency-1.5` or `op-eco` git submodule. If this occurs, run:
+
+```sh
+cd lib/currency-1.5
+yarn install
+cd -
+cd lib/op-eco
+yarn install
+cd -
+```
+
+To build, run:
+
+```sh
+forge build
+```
+
+To test, run:
+
+```sh
+forge test
+```
+
+# Foundry Reference
 
 **Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
 
