@@ -1,0 +1,13 @@
+@ensdomains/=lib/currency-1.5/node_modules/@ensdomains/
+@eth-optimism/=lib/op-eco/node_modules/@eth-optimism/
+currency-1.5/=lib/currency-1.5/contracts/
+eth-gas-reporter/=lib/currency-1.5/node_modules/eth-gas-reporter/
+forge-std/=lib/forge-std/src/
+hardhat/=lib/currency-1.5/node_modules/hardhat/
+op-eco/=lib/op-eco/contracts/
+@openzeppelin-op-eco/=lib/op-eco/node_modules/@openzeppelin/
+@openzeppelin-currency/=lib/currency-1.5/node_modules/@openzeppelin/
+lib/op-eco/:@openzeppelin/=lib/op-eco/node_modules/@openzeppelin/
+lib/op-eco/:@helix-foundation/=lib/op-eco/node_modules/@helix-foundation
+lib/currency-1.5/:@openzeppelin/=lib/currency-1.5/node_modules/@openzeppelin/
+lib/currency-1.5/:@helix-foundation/=lib/currency-1.5/node_modules/@helix-foundation/
