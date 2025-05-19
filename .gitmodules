@@ -4,3 +4,6 @@
 [submodule "lib/currency-1.5"]
 	path = lib/currency-1.5
 	url = https://github.com/eco-association/currency-1.5
+[submodule "lib/op-eco"]
+	path = lib/op-eco
+	url = https://github.com/eco-association/op-eco
