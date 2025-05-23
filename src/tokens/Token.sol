@@ -24,7 +24,7 @@ contract Token is ERC20PermitUpgradeable, PausableUpgradeable, AccessControlUpgr
         __Pausable_init();
         __AccessControl_init();
 
-        //hardcode this or deploy with hardhat proxy toolkit
+        //TODO: decide to hardcode this or deploy with hardhat proxy toolkit
         address admin = 0x8c02D4cc62F79AcEB652321a9f8988c0f6E71E68; // ROOT POLICY ADDRESS
         address pauser = 0x8c02D4cc62F79AcEB652321a9f8988c0f6E71E68; // ROOT POLICY ADDRESS
 
@@ -70,5 +70,6 @@ contract Token is ERC20PermitUpgradeable, PausableUpgradeable, AccessControlUpgr
         return true;
     }
 
+    uint256[50] private __gap; 
     // no need to include increaseAllowance, decreaseAllowance -- see https://github.com/OpenZeppelin/openzeppelin-contracts/issues/4583
 }
