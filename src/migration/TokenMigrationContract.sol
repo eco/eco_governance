@@ -20,6 +20,20 @@ contract TokenMigrationContract is AccessControl {
     ECOxStaking public immutable secox;
     Token public immutable newToken;
 
+    /**
+     * @notice Emitted when tokens are migrated for an account
+     * @param account The account whose tokens were migrated
+     * @param amount The total amount of tokens migrated (ECOx + sECOx)
+     */
+    event Migrated(address indexed account, uint256 amount);
+
+    /**
+     * @notice Constructs the TokenMigrationContract
+     * @param _ecox The ECOx token contract to migrate from
+     * @param _secox The sECOx staking contract to migrate from
+     * @param _newToken The new token contract to mint to
+     * @param admin The address to grant admin and migrator roles to
+     */
     constructor(
         ECOx _ecox,
         ECOxStaking _secox,
@@ -34,16 +48,39 @@ contract TokenMigrationContract is AccessControl {
         _grantRole(MIGRATOR_ROLE, admin);
     }
 
+    /**
+     * @notice Migrates ECOx and sECOx tokens for a single account
+     * @dev Burns the account's ECOx and sECOx balances and mints an equal total amount of new tokens
+     * @param account The account to migrate tokens for
+     */
     function migrate(address account) external onlyRole(MIGRATOR_ROLE) {
         _migrate(account);
     }
 
+    /**
+     * @notice Migrates ECOx and sECOx tokens for multiple accounts in a single transaction
+     * @dev Burns each account's ECOx and sECOx balances and mints equal total amounts of new tokens
+     * @param accounts Array of accounts to migrate tokens for
+     */
     function massMigrate(address[] calldata accounts) external onlyRole(MIGRATOR_ROLE) {
         for (uint256 i = 0; i < accounts.length; ++i) {
             _migrate(accounts[i]);
         }
     }
 
+    function upgradeECOx(address newECOx) external onlyRole(MIGRATOR_ROLE) {
+        ecox.setImplementation(newECOx);
+    }
+
+    function upgradeSECOx(address newSECOx) external onlyRole(MIGRATOR_ROLE) {
+        secox.setImplementation(newSECOx);
+    }
+
+    /**
+     * @notice Internal function to handle the migration logic for a single account
+     * @dev Burns ECOx and sECOx tokens, mints new tokens equal to the sum, emits Migrated event
+     * @param account The account to migrate tokens for
+     */
     function _migrate(address account) internal {
         // Get balances
         uint256 ecoxBalance = ecox.balanceOf(account);
@@ -63,6 +100,7 @@ contract TokenMigrationContract is AccessControl {
         uint256 totalBalance = ecoxBalance + secoxBalance;
         if (totalBalance > 0) {
             newToken.mint(account, totalBalance); // transfer IF minting happens first on L1
+            emit Migrated(account, totalBalance);
         }
     }
 }

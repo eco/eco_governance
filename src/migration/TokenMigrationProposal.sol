@@ -72,6 +72,7 @@ contract TokenMigrationProposal is Proposal {
         // TODO: special burn of ECOx in the bridge + mint to op migration contract
         // TODO: bridge on l2 and l1? what to do about in progress withdrawals?? 
 
+        
         // OPTIMISM 
         // transfer owner of static market to migration contract on OP
         bytes memory message =
