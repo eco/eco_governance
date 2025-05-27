@@ -15,10 +15,10 @@ contract L2ECOxUpgrade is L2ECOx, PausableUpgradeable {
     }
 
     /// Re-init for V2
-    function reinitializeV2(address _newTokenRoleAdmin) public reinitializer(2) {
-        address public constant INITIAL_PAUSER = 0x0000000000000000000000000000000000000001;
-        pausers[INITIAL_PAUSER] = true;
-        updateTokenRoleAdmin(_newTokenRoleAdmin);
+    function reinitializeV2() public reinitializer(2) {
+        address newTokenRoleAdmin = 0x0000000000000000000000000000000000000001;
+        pausers[newTokenRoleAdmin] = true;
+        updateTokenRoleAdmin(newTokenRoleAdmin);
         _pause();
     }
 
