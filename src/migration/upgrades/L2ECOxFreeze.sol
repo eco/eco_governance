@@ -5,7 +5,7 @@ import {L2ECOx} from "lib/op-eco/contracts/token/L2ECOx.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
-contract L2ECOxUpgrade is L2ECOx, PausableUpgradeable {
+contract L2ECOxFreeze is L2ECOx, PausableUpgradeable {
 
     mapping(address => bool) public pausers;
 
