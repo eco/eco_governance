@@ -5,6 +5,7 @@ import {ECOxStaking} from "currency-1.5/governance/community/ECOxStaking.sol";
 import {L2ECOx} from "op-eco/token/L2ECOx.sol";
 import {TokenMigrationContract} from "./TokenMigrationContract.sol";
 import {Token} from "src/tokens/Token.sol";
+import {L2ECOxUpgrade} from "./upgrades/L2ECOxUpgrade.sol";
 
 contract TokenMigrationProposal is Proposal {
     //L1 Addresses
@@ -13,12 +14,14 @@ contract TokenMigrationProposal is Proposal {
     Token public immutable newToken; // TBD
     TokenMigrationContract public immutable migrationContract; // TBD
     IL1CrossDomainMessenger public immutable messenger; // 0x25ace71c97B33Cc4729CF772ae268934F7ab5fA1
+    L1ECOBridge public immutable l1ECOBridge; // TBD
 
     //L2 Addresses
     address public staticMarket; // 0x6085e45604956A724556135747400e32a0D6603A
     address public migrationContractOP; // TBD
     address public newTokenOP; // TBD
     L2ECOx public l2ECOx; // 0xf805B07ee64f03f0aeb963883f70D0Ac0D0fE242
+    L2ECOxUpgrade public l2ECOxUpgrade; // TBD
 
     // reference proposal : https://etherscan.io/address/0x80CC5F92F93F5227b7057828e223Fc5BAD71b2E7#code
 
@@ -69,8 +72,9 @@ contract TokenMigrationProposal is Proposal {
         newToken.pause();
 
         ecox.burn(address(secox), ecox.balanceOf(address(secox)));
+        ecox.burn(address(l1ECOBridge), ecox.balanceOf(address(l1ECOBridge)));
         // TODO: special burn of ECOx in the bridge + mint to op migration contract
-        // TODO: bridge on l2 and l1? what to do about in progress withdrawals?? 
+        // TODO: burn in bridge on l2 and l1? what to do about in progress withdrawals?? 
 
         
         // OPTIMISM 
@@ -78,9 +82,6 @@ contract TokenMigrationProposal is Proposal {
         bytes memory message =
             abi.encodeWithSelector(bytes4(keccak256("setContractOwner(address,bool)")), migrationContractOP, true);
         messenger.sendMessage(staticMarket, message, 0);
-
-        // TODO: bind new implimentations of L1ECOBridge and L2ECOBridge to themselves (which allow the ownership of ECOx to be transferred to the security council)
-
-        // TODO: send message to the ECOx contract to renounce ownership to the security council
+        l1ECOBridge.upgradeECOx(newL2ECOxImpl, l2gas);
     }
 }

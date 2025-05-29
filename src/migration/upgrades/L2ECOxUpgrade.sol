@@ -16,7 +16,7 @@ contract L2ECOxUpgrade is L2ECOx, PausableUpgradeable {
 
     /// Re-init for V2
     function reinitializeV2() public reinitializer(2) {
-        address newTokenRoleAdmin = 0x0000000000000000000000000000000000000001;
+        address newTokenRoleAdmin = 0x0000000000000000000000000000000000000001; //TODO: set this to the new token role admin
         pausers[newTokenRoleAdmin] = true;
         updateTokenRoleAdmin(newTokenRoleAdmin);
         _pause();
