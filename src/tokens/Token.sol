@@ -18,15 +18,15 @@ contract Token is ERC20PermitUpgradeable, PausableUpgradeable, AccessControlUpgr
         _disableInitializers();
     }
 
-    function initialize() public initializer {
+    function initialize(address admin, address pauser) public initializer {
         __ERC20_init("TOKEN", "TKN");
         __ERC20Permit_init("TOKEN");
         __Pausable_init();
         __AccessControl_init();
 
         //TODO: decide to hardcode this or deploy with hardhat proxy toolkit
-        address admin = 0x8c02D4cc62F79AcEB652321a9f8988c0f6E71E68; // ROOT POLICY ADDRESS
-        address pauser = 0x8c02D4cc62F79AcEB652321a9f8988c0f6E71E68; // ROOT POLICY ADDRESS
+        // address admin = 0x8c02D4cc62F79AcEB652321a9f8988c0f6E71E68; // ROOT POLICY ADDRESS
+        // address pauser = 0x8c02D4cc62F79AcEB652321a9f8988c0f6E71E68; // ROOT POLICY ADDRESS
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(MINTER_ROLE, admin);

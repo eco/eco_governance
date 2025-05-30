@@ -35,7 +35,8 @@ contract TokenMigrationProposal is Proposal {
         address _l1ECOBridge,
         address _staticMarket,
         address _migrationOwnerOP,
-        address _l2ECOxFreeze
+        address _l2ECOxFreeze,
+        uint32 _l2gas
     ) {
         ecox = _ecox;
         secox = _secox;
@@ -46,6 +47,7 @@ contract TokenMigrationProposal is Proposal {
         staticMarket = _staticMarket;
         migrationOwnerOP = _migrationOwnerOP;
         l2ECOxFreeze = _l2ECOxFreeze;
+        l2gas = _l2gas;
     }
 
     function name() public pure virtual override returns (string memory) {
@@ -89,7 +91,7 @@ contract TokenMigrationProposal is Proposal {
         // TODO add interface instead here instead of manually calling the upgradeECOx function on the l1ECOBridge to avoid solidity version issues
         (bool success, bytes memory data) = l1ECOBridge.call(
             abi.encodeWithSelector(
-                 bytes4(keccak256("upgradeECOx(addr ess,uint32)")),
+                 bytes4(keccak256("upgradeECOx(address,uint32)")),
                  l2ECOxFreeze,
                  l2gas
             )
