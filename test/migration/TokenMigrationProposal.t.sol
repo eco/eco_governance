@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import {Test} from "forge-std/Test.sol";
 import {console} from "forge-std/console.sol";
 import {Utilities} from "test/utils/Utilities.sol";
+import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 
 // Local contracts
 import {Token} from "src/tokens/Token.sol";
@@ -16,8 +17,8 @@ import {ECOx} from "currency-1.5/currency/ECOx.sol";
 import {ECOxStaking} from "currency-1.5/governance/community/ECOxStaking.sol";
 import {Policy} from "currency-1.5/policy/Policy.sol";
 
-// OP-ECO contracts 
-import {IL1ECOBridge} from "src/migration/interfaces/IL1ECOBridge.sol"; 
+// OP-ECO contracts
+import {IL1ECOBridge} from "src/migration/interfaces/IL1ECOBridge.sol";
 import {IL2ECOBridge} from "src/migration/interfaces/IL2ECOBridge.sol";
 // https://ethereum.stackexchange.com/questions/153940/how-to-resolve-compiler-version-conflicts-in-foundry-test-contracts
 import {IL2ECOx} from "src/migration/interfaces/IL2ECOx.sol"; // doing this due to compatibility issues with op-eco, will deploy other way in test
@@ -27,7 +28,6 @@ import {IL1CrossDomainMessenger} from "@eth-optimism/contracts/L1/messaging/IL1C
 import {IL2CrossDomainMessenger} from "@eth-optimism/contracts/L2/messaging/IL2CrossDomainMessenger.sol";
 import {AddressAliasHelper} from "@eth-optimism/contracts-bedrock/contracts/vendor/AddressAliasHelper.sol";
 import {Hashing} from "lib/op-eco/node_modules/@eth-optimism/contracts-bedrock/contracts/libraries/Hashing.sol";
-
 
 contract TokenMigrationProposalTest is Test {
     uint256 mainnetFork;
@@ -48,10 +48,19 @@ contract TokenMigrationProposalTest is Test {
         IL1CrossDomainMessenger(0x25ace71c97B33Cc4729CF772ae268934F7ab5fA1);
 
     // L1 To Set
-    TokenMigrationProposal proposal; 
+    TokenMigrationProposal proposal;
     Token token;
     TokenMigrationContract migrationContract;
     ECOxStakingBurnable secoxBurnable;
+
+    // Create utilities instance
+    Utilities utilities = new Utilities();
+
+    //L1 Users
+    address payable[] users;
+    address minter;
+    address alice;
+    address bob;
 
     //L2 Protocol Addresses
     address constant staticMarket = 0x6085e45604956A724556135747400e32a0D6603A;
@@ -59,7 +68,7 @@ contract TokenMigrationProposalTest is Test {
 
     // L2 To Set
     address L2ECOxFreeze;
-    address migrationOwnerOP; 
+    address migrationOwnerOP;
     uint32 l2gas;
 
     function setUp() public {
@@ -67,7 +76,18 @@ contract TokenMigrationProposalTest is Test {
         mainnetFork = vm.createFork(mainnetRpcUrl, 22597199);
         optimismFork = vm.createFork(optimismRpcUrl, 136514625);
 
-        // deploy contracts
-        
+        // Create users
+        users = utilities.createUsers(3); // 3 users for testing
+        minter = users[0];
+        alice = users[1];
+        bob = users[2];
 
+        // deploy contracts
+        address tokenProxy = Upgrades.deployTransparentProxy(
+            "Token.sol",
+            address(securityCouncil),
+            abi.encodeWithSelector(Token.initialize.selector, address(minter), address(securityCouncil))
+        );
+        token = Token(tokenProxy);
+    }
 }
