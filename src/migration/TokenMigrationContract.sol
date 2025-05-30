@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {ECOx} from "currency-1.5/currency/ECOx.sol";
-import {ECOxStaking} from "currency-1.5/governance/community/ECOxStaking.sol";
+import {ECOxStakingBurnable} from "src/migration/upgrades/ECOxStakingBurnable.sol";
 import {Token} from "src/tokens/Token.sol";
 
 /**
@@ -17,7 +17,7 @@ contract TokenMigrationContract is AccessControl {
     bytes32 public constant MIGRATOR_ROLE = keccak256("MIGRATOR_ROLE");
 
     ECOx public immutable ecox;
-    ECOxStaking public immutable secox;
+    ECOxStakingBurnable public immutable secox;
     Token public immutable newToken;
 
     /**
@@ -36,7 +36,7 @@ contract TokenMigrationContract is AccessControl {
      */
     constructor(
         ECOx _ecox,
-        ECOxStaking _secox,
+        ECOxStakingBurnable _secox,
         Token _newToken,
         address admin
     ) {
@@ -92,6 +92,7 @@ contract TokenMigrationContract is AccessControl {
         }
 
         // Burn sECOx if they have any  
+        // TODO: upgrade sECOx
         if (secoxBalance > 0) {
             secox.burn(account, secoxBalance);
         }
@@ -99,7 +100,7 @@ contract TokenMigrationContract is AccessControl {
         // Mint new tokens - sum of both balances
         uint256 totalBalance = ecoxBalance + secoxBalance;
         if (totalBalance > 0) {
-            newToken.mint(account, totalBalance); // transfer IF minting happens first on L1
+            newToken.transfer(account, totalBalance); // transfering because it will be preminted 
             emit Migrated(account, totalBalance);
         }
     }
