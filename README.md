@@ -23,9 +23,11 @@ To build, run:
 forge build
 ```
 
-To test, run:
+To test, run. We have to generate an interface for L2ECOxFreeze because of incompability issues with Solidity versions.
 
 ```sh
+forge build src/migration/upgrades/L2ECOxFreeze.sol 
+cast interface out/L2ECOxFreeze.sol/L2ECOxFreeze.json --name IL2ECOxFreeze > src/migration/interfaces/IL2ECOxFreeze.sol
 forge test
 ```
 

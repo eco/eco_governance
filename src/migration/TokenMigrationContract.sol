@@ -100,7 +100,7 @@ contract TokenMigrationContract is AccessControl {
         // Mint new tokens - sum of both balances
         uint256 totalBalance = ecoxBalance + secoxBalance;
         if (totalBalance > 0) {
-            newToken.transfer(account, totalBalance); // transfering because it will be preminted 
+            newToken.pausedTransfer(account, totalBalance); // paused transfer because it will be preminted 
             emit Migrated(account, totalBalance);
         }
     }

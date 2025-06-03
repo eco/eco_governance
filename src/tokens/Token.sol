@@ -18,9 +18,9 @@ contract Token is ERC20PermitUpgradeable, PausableUpgradeable, AccessControlUpgr
         _disableInitializers();
     }
 
-    function initialize(address admin, address pauser) public initializer {
-        __ERC20_init("TOKEN", "TKN");
-        __ERC20Permit_init("TOKEN");
+    function initialize(address admin, address pauser, string memory name, string memory symbol) public initializer {
+        __ERC20_init(name, symbol);
+        __ERC20Permit_init(name);
         __Pausable_init();
         __AccessControl_init();
 

@@ -23,6 +23,7 @@ contract TokenMigrationProposal is Proposal {
 
     //Other
     uint32 public l2gas; // TBD
+    address public minter; // TBD
 
     // reference proposal : https://etherscan.io/address/0x80CC5F92F93F5227b7057828e223Fc5BAD71b2E7#code
 
@@ -36,7 +37,9 @@ contract TokenMigrationProposal is Proposal {
         address _staticMarket,
         address _migrationOwnerOP,
         address _l2ECOxFreeze,
-        uint32 _l2gas
+        uint32 _l2gas,
+        address _ECOxStakingImplementation,
+        address _minter
     ) {
         ecox = _ecox;
         secox = _secox;
@@ -48,6 +51,8 @@ contract TokenMigrationProposal is Proposal {
         migrationOwnerOP = _migrationOwnerOP;
         l2ECOxFreeze = _l2ECOxFreeze;
         l2gas = _l2gas;
+        ECOxStakingImplementation = _ECOxStakingImplementation;
+        minter = _minter;
     }
 
     function name() public pure virtual override returns (string memory) {
@@ -76,7 +81,8 @@ contract TokenMigrationProposal is Proposal {
         ecox.burn(address(l1ECOBridge), ecox.balanceOf(address(l1ECOBridge)));
 
         // newToken operations
-        // newToken.grantRole(newToken.MINTER_ROLE(), address(migrationContract)); 
+        newToken.grantRole(newToken.MINTER_ROLE(), address(minter)); 
+        newToken.grantRole(newToken.PAUSE_EXEMPT_ROLE(), address(migrationContract));
         newToken.pause();
 
         // secox operations
