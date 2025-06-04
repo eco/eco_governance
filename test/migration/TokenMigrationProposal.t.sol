@@ -68,7 +68,7 @@ contract TokenMigrationProposalTest is Test {
     // L2 To Set
     IL2ECOxFreeze l2ECOxFreeze;
     address migrationOwnerOP;
-    uint32 l2gas;
+    uint32 l2gas = 10000;
 
     function setUp() public {
         //fork networks 22597199 mainnet, 136514625 optimism
@@ -186,6 +186,11 @@ contract TokenMigrationProposalTest is Test {
     }
 
     function enactment_sequence() public {
+        bytes32 slot = vm.load(address(l1ECOBridge), 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc);
+        console.logBytes32(slot);
+        console.log(address(staticMarket));
+
+
         vm.prank(address(securityCouncil));
         policy.enact(address(proposal));
 
