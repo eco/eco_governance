@@ -54,7 +54,9 @@ contract TokenMigrationContract is AccessControl {
      * @param account The account to migrate tokens for
      */
     function migrate(address account) external onlyRole(MIGRATOR_ROLE) {
+        ecox.unpause();
         _migrate(account);
+        ecox.pause();
     }
 
     /**
@@ -63,9 +65,11 @@ contract TokenMigrationContract is AccessControl {
      * @param accounts Array of accounts to migrate tokens for
      */
     function massMigrate(address[] calldata accounts) external onlyRole(MIGRATOR_ROLE) {
+        ecox.unpause();
         for (uint256 i = 0; i < accounts.length; ++i) {
             _migrate(accounts[i]);
         }
+        ecox.pause();
     }
 
     function upgradeECOx(address newECOx) external onlyRole(MIGRATOR_ROLE) {

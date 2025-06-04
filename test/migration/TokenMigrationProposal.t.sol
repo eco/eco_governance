@@ -5,6 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {console} from "forge-std/console.sol";
 import {Utilities} from "test/utils/Utilities.sol";
 import {UnsafeUpgrades as Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
+import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 // Local contracts
 import {Token} from "src/tokens/Token.sol";
@@ -91,10 +92,16 @@ contract TokenMigrationProposalTest is Test {
         Token tokenImplementation = new Token();
         address tokenProxy = Upgrades.deployTransparentProxy(
             address(tokenImplementation),
-            address(securityCouncil),
+            address(policy),
             abi.encodeWithSelector(Token.initialize.selector, address(policy), address(securityCouncil), "TOKEN", "TKN")
         );
         token = Token(tokenProxy);
+
+        ProxyAdmin proxyAdmin = ProxyAdmin(Upgrades.getAdminAddress(tokenProxy));
+        
+        assertEq(proxyAdmin.owner(), address(policy));
+        
+        assertEq(vm.load(tokenProxy, 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103), bytes32(uint256(uint160(address(proxyAdmin)))));
 
         // deploy migration contract with no proxy
         migrationContract = new TokenMigrationContract(
@@ -145,32 +152,105 @@ contract TokenMigrationProposalTest is Test {
         assertEq(token.hasRole(token.PAUSER_ROLE(), address(securityCouncil)), true);
 
         assertEq(token.paused(), false);
+
     }
 
     function test_migration_contract_deployment() public {
-    }
-
-    function test_proposal_deployment() public {
+        //ensure that the migration contract is deployed with the correct constructor
+        assertEq(address(migrationContract.ecox()), address(ecox));
+        assertEq(address(migrationContract.secox()), address(secox));
+        assertEq(address(migrationContract.newToken()), address(token));
+        assertEq(migrationContract.hasRole(migrationContract.MIGRATOR_ROLE(), address(securityCouncil)), true);
+        assertEq(migrationContract.hasRole(migrationContract.DEFAULT_ADMIN_ROLE(), address(securityCouncil)), true);  
+    
     }
 
     function test_ECOxStakingBurnable_deployment() public {
+        assertEq(address(secoxBurnable.policy()), address(policy));
+        assertEq(address(secoxBurnable.ecoXToken()), address(ecox));
     }
 
-    function test_l2ECOxFreeze_deployment() public {
+    function test_proposal_deployment() public {
+        assertEq(address(proposal.ecox()), address(ecox));
+        assertEq(address(proposal.secox()), address(secox));
+        assertEq(address(proposal.newToken()), address(token));
+        assertEq(address(proposal.migrationContract()), address(migrationContract));
+        assertEq(address(proposal.messenger()), address(l1Messenger));
+        assertEq(address(proposal.l1ECOBridge()), address(l1ECOBridge));
+        assertEq(address(proposal.staticMarket()), address(staticMarket));
+        assertEq(address(proposal.migrationOwnerOP()), address(migrationOwnerOP));
+        assertEq(address(proposal.l2ECOxFreeze()), address(l2ECOxFreeze));
+        assertEq(proposal.l2gas(), l2gas);
+        assertEq(address(proposal.ECOxStakingImplementation()), address(secoxBurnable));
+        assertEq(address(proposal.minter()), address(minter));
     }
 
-    function test_setup() public {
-        // ensure that the migration contract is not a burner
-        // ensure that ECOx is not paused
-        // ensure that the new token is not paused
-        // ensure that the ECOxStaking contract is not paused
+    function enactment_sequence() public {
+        vm.prank(address(securityCouncil));
+        policy.enact(address(proposal));
+
+        //TODO: need to parse the messages passed to the l2 here and make sure they conform
+
+        // ensure that the migration contract and policy addresses are burners
+        assertEq(ecox.burners(address(migrationContract)), true);
+        assertEq(ecox.burners(address(policy)), true);
+
+        // ensure that the policy address is a pauser
+        assertEq(ecox.pauser(), address(migrationContract));
+
+        // ensure that ECOx is paused
+        assertEq(ecox.paused(), true);
+
+        //ensure that the ECOx in the bridge and secox are both burned
+        assertEq(ecox.balanceOf(address(l1ECOBridge)), 0);
+        assertEq(ecox.balanceOf(address(secox)), 0);
+
+        //ensure that the minter address is a minter of the new token
+        assertEq(token.hasRole(token.MINTER_ROLE(), address(minter)), true);
+
+        //ensure that the migration contract is a pause exempt role
+        assertEq(token.hasRole(token.PAUSE_EXEMPT_ROLE(), address(migrationContract)), true);
+
+        //ensure that the newToken contract is paused
+        assertEq(token.paused(), true);
+
+        //ensure that the secox contract has a new implementation
+        assertEq(secox.implementation(), address(secoxBurnable));
+
+        //ensure that the migration contract is a burner
+        assertEq(ecox.burners(address(migrationContract)), true);
         
-        // check the balance of ECOx in the sECOx contract
-        // check the balance of ECOx in the l1ECOBridge contract
-
-        // 
     }
+
     
     function test_enactment() public {
+        // ensure that the migration contract is not a burner
+        assertEq(ecox.burners(address(migrationContract)), false);
+
+        // check to make sure the policy address is not a pauser
+        assertNotEq(ecox.pauser(), address(policy));
+
+        // check to make sure the migration address is not a pauser
+        assertNotEq(ecox.pauser(), address(migrationContract));
+
+        // ensure that ECOx is not paused
+        assertEq(ecox.paused(), false);
+        
+        uint256 secoxBalance = ecox.balanceOf(address(secox));
+        uint256 bridgeBalance = ecox.balanceOf(address(l1ECOBridge));
+
+        // check that the minter address is not a minter of the new token yet
+        // check that the migration contract is not pause exempt role yet
+        assertEq(token.hasRole(token.MINTER_ROLE(), address(minter)), false);
+        assertEq(token.hasRole(token.PAUSE_EXEMPT_ROLE(), address(migrationContract)), false);
+
+        // ensure that the newToken contract is not paused
+        assertEq(token.paused(), false);
+
+        // get sECOx implimentation address
+        address secoxImplementation = secox.implementation();
+
+        enactment_sequence();
+
     }
 }

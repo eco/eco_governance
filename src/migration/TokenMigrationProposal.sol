@@ -1,3 +1,5 @@
+pragma solidity ^0.8.0;
+
 import {Proposal} from "currency-1.5/governance/community/proposals/Proposal.sol";
 import {ECOx} from "currency-1.5/currency/ECOx.sol";
 import {ECOxStaking} from "currency-1.5/governance/community/ECOxStaking.sol";
@@ -75,10 +77,11 @@ contract TokenMigrationProposal is Proposal {
         // ecox operations
         ecox.updateBurners(address(migrationContract), true);
         ecox.updateBurners(address(this), true);
-        ecox.setPauser(address(this));
-        ecox.pause();
         ecox.burn(address(secox), ecox.balanceOf(address(secox)));
         ecox.burn(address(l1ECOBridge), ecox.balanceOf(address(l1ECOBridge)));
+        ecox.setPauser(address(this));
+        ecox.pause();
+        ecox.setPauser(address(migrationContract));
 
         // newToken operations
         newToken.grantRole(newToken.MINTER_ROLE(), address(minter)); 
