@@ -190,6 +190,13 @@ contract TokenMigrationProposalTest is Test {
         console.logBytes32(slot);
         console.log(address(staticMarket));
 
+        //select optimism fork 
+        vm.selectFork(optimismFork);
+        bytes32 slot2 = vm.load(address(l2ECOx), 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103);
+        console.logBytes32(slot2);
+
+        //select mainnet fork
+        vm.selectFork(mainnetFork);
 
         vm.prank(address(securityCouncil));
         policy.enact(address(proposal));
