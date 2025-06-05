@@ -18,7 +18,6 @@ contract L2ECOxFreeze is L2ECOx, PausableUpgradeable {
     function reinitializeV2() public reinitializer(2) {
         address newTokenRoleAdmin = 0xCF2A6B4bc14A1FEf0862c9583b61B1beeDE980C2; //security council for now
         pausers[newTokenRoleAdmin] = true;
-        updateTokenRoleAdmin(newTokenRoleAdmin);
         _pause();
     }
 

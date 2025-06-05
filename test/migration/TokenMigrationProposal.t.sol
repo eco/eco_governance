@@ -24,6 +24,7 @@ import {IL1ECOBridge} from "src/migration/interfaces/IL1ECOBridge.sol";
 import {IL2ECOBridge} from "src/migration/interfaces/IL2ECOBridge.sol";
 import {IL2ECOx} from "src/migration/interfaces/IL2ECOx.sol";
 import {IL2ECOxFreeze} from "src/migration/interfaces/IL2ECOxFreeze.sol"; // doing this due to compatibility issues with op-eco, will deploy other way in test
+import {IStaticMarket} from "src/migration/interfaces/IStaticMarket.sol";
 
 // Optimism contracts
 import {IL1CrossDomainMessenger} from "@eth-optimism/contracts/L1/messaging/IL1CrossDomainMessenger.sol";
@@ -356,8 +357,6 @@ contract TokenMigrationProposalTest is Test {
         // ensure that ECOx is not paused
         assertEq(ecox.paused(), false);
 
-        uint256 secoxBalance = ecox.balanceOf(address(secox));
-        uint256 bridgeBalance = ecox.balanceOf(address(l1ECOBridge));
 
         // check that the minter address is not a minter of the new token yet
         // check that the migration contract is not pause exempt role yet
@@ -619,6 +618,40 @@ contract TokenMigrationProposalTest is Test {
         );
 
 
+        //check that the bridge has been upgraded
+        bytes32 implementationSlot = bytes32(
+            uint256(keccak256("eip1967.proxy.implementation")) - 1
+        );
+        bytes32 l2BridgeImpl = vm.load(
+            address(l2ECOBridge),
+            implementationSlot
+        );
+        assertEq(
+            address(uint160(uint256(l2BridgeImpl))),
+            address(l2ECOBridgeUpgrade)
+        );
+
+        //check that the ecox has been upgraded
+        bytes32 l2ECOxImpl = vm.load(
+            address(l2ECOx), 
+            implementationSlot
+        );
+        assertEq(
+            address(uint160(uint256(l2ECOxImpl))),
+            address(l2ECOxFreeze)
+        );
+
+        //check that new contract owner and L2 flag are set correctly
+        assertEq(IStaticMarket(staticMarket).contractOwner(), address(migrationOwnerOP));
+        assertEq(IStaticMarket(staticMarket).isContractOwnerL2(), true);
+
+        vm.prank(migrationOwnerOP);
+        IL2ECOxFreeze(address(l2ECOx)).reinitializeV2();
+
+        //check that the new token is paused
+        assertEq(IL2ECOxFreeze(address(l2ECOx)).paused(), true);
+        //check security council is pauser 
+        assertEq(IL2ECOxFreeze(address(l2ECOx)).pausers(securityCouncil), true);
 
     }
 
