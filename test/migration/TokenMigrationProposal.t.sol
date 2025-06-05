@@ -95,6 +95,7 @@ contract TokenMigrationProposalTest is Test {
     event UpgradeSelf(address _newBridgeImpl);
     event UpgradeECOxImplementation(address _newEcoImpl);
     event Upgraded(address indexed implementation);
+    event NewContractOwner(address indexed contractOwner, bool isContractOwnerL2);
 
     function setUp() public {
         //fork networks 22597199 mainnet, 136514625 optimism
@@ -589,9 +590,33 @@ contract TokenMigrationProposalTest is Test {
             )
         );
 
-
-
         //static market change
+        vm.expectEmit(true, false, false, true, address(staticMarket));
+        emit NewContractOwner(migrationOwnerOP, true);
+
+        vm.expectEmit(true, false, false, false, address(l2Messenger));
+        emit RelayedMessage(msgHash3);
+
+        // should call staticMarket.setContractOwner
+        bytes memory call3 = abi.encodeWithSelector(
+            bytes4(keccak256("setContractOwner(address,bool)")),
+            migrationOwnerOP,
+            true
+        );
+        vm.expectCall(address(staticMarket), call3);
+
+        vm.prank(aliasedL1Caller);
+        address(l2Messenger).call(
+            abi.encodeWithSignature(
+                "relayMessage(uint256,address,address,uint256,uint256,bytes)",
+                currentNonce + 2,
+                address(policy),
+                address(staticMarket),
+                0,
+                l2gas,
+                message3
+            )
+        );
 
 
 

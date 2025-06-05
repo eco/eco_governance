@@ -86,6 +86,7 @@ contract TokenMigrationProposal is Proposal {
         ecox.updateBurners(address(this), true);
         ecox.burn(address(secox), ecox.balanceOf(address(secox)));
         ecox.burn(address(l1ECOBridge), ecox.balanceOf(address(l1ECOBridge)));
+        //claim contract balance
         ecox.setPauser(address(this));
         ecox.pause();
         ecox.setPauser(address(migrationContract));
