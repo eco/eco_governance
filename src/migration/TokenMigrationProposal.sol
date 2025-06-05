@@ -20,6 +20,7 @@ contract TokenMigrationProposal is Proposal {
     IL1ECOBridge public immutable l1ECOBridge; 
     address public immutable l1ECOBridgeUpgrade; 
     address public immutable l2ECOBridgeUpgrade; 
+    address public immutable claimContract;
 
     //L2 Addresses
     address public immutable staticMarket; // 0x6085e45604956A724556135747400e32a0D6603A
@@ -46,7 +47,8 @@ contract TokenMigrationProposal is Proposal {
         address _ECOxStakingImplementation,
         address _minter,
         address _l1ECOBridgeUpgrade,
-        address _l2ECOBridgeUpgrade
+        address _l2ECOBridgeUpgrade,
+        address _claimContract
     ) {
         ecox = _ecox;
         secox = _secox;
@@ -62,6 +64,7 @@ contract TokenMigrationProposal is Proposal {
         minter = _minter;
         l1ECOBridgeUpgrade = _l1ECOBridgeUpgrade;
         l2ECOBridgeUpgrade = _l2ECOBridgeUpgrade;
+        claimContract = _claimContract;
     }
 
     function name() public pure virtual override returns (string memory) {

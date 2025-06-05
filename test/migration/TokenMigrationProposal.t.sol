@@ -52,6 +52,7 @@ contract TokenMigrationProposalTest is Test {
         IL2ECOBridge(0xAa029BbdC947F5205fBa0F3C11b592420B58f824);
     IL1CrossDomainMessenger l1Messenger =
         IL1CrossDomainMessenger(0x25ace71c97B33Cc4729CF772ae268934F7ab5fA1);
+    address claimContract = 0xa28f219BF1e15f5217B8Eb5f406BcbE8f13d16DC;
 
     // L1 To Set
     TokenMigrationProposal proposal;
@@ -183,7 +184,8 @@ contract TokenMigrationProposalTest is Test {
             address(secoxBurnable),
             address(minter),
             address(l1ECOBridgeUpgrade),
-            address(l2ECOBridgeUpgrade)
+            address(l2ECOBridgeUpgrade),
+            address(claimContract)
         );
         assertEq(vm.activeFork(), mainnetFork);
     }
@@ -305,6 +307,7 @@ contract TokenMigrationProposalTest is Test {
         //ensure that the ECOx in the bridge and secox are both burned
         assertEq(ecox.balanceOf(address(l1ECOBridge)), 0);
         assertEq(ecox.balanceOf(address(secox)), 0);
+        assertEq(ecox.balanceOf(address(claimContract)), 0);
 
         //ensure that the minter address is a minter of the new token
         console.log(address(minter));
@@ -652,6 +655,65 @@ contract TokenMigrationProposalTest is Test {
         assertEq(IL2ECOxFreeze(address(l2ECOx)).paused(), true);
         //check security council is pauser 
         assertEq(IL2ECOxFreeze(address(l2ECOx)).pausers(securityCouncil), true);
+
+    }
+
+    function test_migration_contract_migration() public {
+
+        //check all the migration script addresses are set correctly
+        assertEq(address(migrationContract.ecox()), address(ecox));
+        assertEq(address(migrationContract.secox()), address(secox));
+        assertEq(address(migrationContract.newToken()), address(token));
+        
+        //make sure the owner of the migration contract is the security council
+        assertEq(migrationContract.hasRole(migrationContract.DEFAULT_ADMIN_ROLE(), address(securityCouncil)), true);
+        //make sure the security council is the migrator
+        assertEq(migrationContract.hasRole(migrationContract.MIGRATOR_ROLE(), address(securityCouncil)), true);
+
+        //enact the proposal
+        vm.prank(securityCouncil);
+        policy.enact(address(proposal));
+
+        //check that the migration contract can burn ecox and secox
+        assertEq(ECOxStakingBurnable(address(secox)).burners(address(migrationContract)), true);
+        assertEq(ecox.burners(address(migrationContract)), true);
+
+        // mint the new token to the migration contract
+        uint256 totalSupply = 1_000_000_000 * 10**18; // 1 billion tokens
+        vm.prank(minter);
+        token.mint(address(migrationContract), totalSupply);
+
+        //check that total supply is 1 billion tokens and the migration contract has all the tokens
+        assertEq(token.totalSupply(), totalSupply);
+        assertEq(token.balanceOf(address(migrationContract)), totalSupply);
+
+        address wallet1 = 0xED83D2f20cF2d218Adbe0a239C0F8AbDca8Fc499; //staked ECOx and ECOx
+        address wallet2 = 0xc9bd798473c03AE3215E8bbeA6b8888C141BF050; //ECOx only
+        address wallet3 = 0x35FDFe53b3817dde163dA82deF4F586450EDf893; //sECOx only
+
+        //check the sECOx and ECOx balances of the wallets and add them together for each wallet
+        uint256 wallet1Entitled = ecox.balanceOf(wallet1) + secox.balanceOf(wallet1);
+        uint256 wallet2Entitled = ecox.balanceOf(wallet2) + secox.balanceOf(wallet2);
+        uint256 wallet3Entitled = ecox.balanceOf(wallet3) + secox.balanceOf(wallet3);
+
+        //check that the migration contract can migrate tokens
+        vm.prank(securityCouncil);
+        migrationContract.migrate(wallet1); //migrate wallet 1
+        migrationContract.migrate(wallet2); //migrate wallet 2
+        migrationContract.migrate(wallet3); //migrate wallet 3
+
+        //check that the secox and ecox balances of the wallets are 0
+        assertEq(ecox.balanceOf(wallet1), 0);
+        assertEq(secox.balanceOf(wallet1), 0);
+        assertEq(token.balanceOf(wallet1), wallet1Entitled);
+
+        assertEq(ecox.balanceOf(wallet2), 0);
+        assertEq(secox.balanceOf(wallet2), 0);
+        assertEq(token.balanceOf(wallet2), wallet2Entitled);
+
+        assertEq(ecox.balanceOf(wallet3), 0);
+        assertEq(secox.balanceOf(wallet3), 0);
+        assertEq(token.balanceOf(wallet3), wallet3Entitled);
 
     }
 

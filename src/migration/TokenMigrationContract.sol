@@ -72,13 +72,16 @@ contract TokenMigrationContract is AccessControl {
         ecox.pause();
     }
 
-    function upgradeECOx(address newECOx) external onlyRole(MIGRATOR_ROLE) {
-        ecox.setImplementation(newECOx);
-    }
+    // token migration contract does not need to upgrade the ecox or secox contracts
+    // will be managed by clean up governance proposal
+    
+    // function upgradeECOx(address newECOx) external onlyRole(MIGRATOR_ROLE) {
+    //     ecox.setImplementation(newECOx);
+    // }
 
-    function upgradeSECOx(address newSECOx) external onlyRole(MIGRATOR_ROLE) {
-        secox.setImplementation(newSECOx);
-    }
+    // function upgradeSECOx(address newSECOx) external onlyRole(MIGRATOR_ROLE) {
+    //     secox.setImplementation(newSECOx);
+    // }
 
     /**
      * @notice Internal function to handle the migration logic for a single account
