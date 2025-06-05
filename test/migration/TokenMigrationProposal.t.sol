@@ -55,6 +55,10 @@ contract TokenMigrationProposalTest is Test {
     TokenMigrationContract migrationContract;
     ECOxStakingBurnable secoxBurnable;
 
+    //bridge upgrades
+    IL1ECOBridge l1ECOBridgeUpgrade;
+    IL2ECOBridge l2ECOBridgeUpgrade;
+
     //L1 Users
     address payable[] users;
     address minter;
@@ -76,9 +80,15 @@ contract TokenMigrationProposalTest is Test {
 
         // https://ethereum.stackexchange.com/questions/153940/how-to-resolve-compiler-version-conflicts-in-foundry-test-contracts
         l2ECOxFreeze = IL2ECOxFreeze(deployCode("L2ECOxFreeze.sol:L2ECOxFreeze"));
+
+        //deploy L2ECOBridge using deployCode
+        l2ECOBridgeUpgrade = IL2ECOBridge(deployCode("out/L2ECOBridge.sol/L2ECOBridge.json"));
         
         mainnetFork = vm.createSelectFork(mainnetRpcUrl, 22597199);
-        
+
+        //deploy L1ECOBridge using deployCode
+        l1ECOBridgeUpgrade = IL1ECOBridge(deployCode("out/L1ECOBridge.sol/L1ECOBridge.json"));
+
         Utilities utilities = new Utilities();
 
         // Create users
@@ -125,13 +135,15 @@ contract TokenMigrationProposalTest is Test {
             Token(address(token)),
             TokenMigrationContract(address(migrationContract)),
             IL1CrossDomainMessenger(address(l1Messenger)),
-            address(l1ECOBridge),
+            l1ECOBridge,
             address(staticMarket),
             address(migrationOwnerOP),
             address(l2ECOxFreeze),
             l2gas,
             address(secoxBurnable),
-            address(minter)
+            address(minter),
+            address(l1ECOBridgeUpgrade),
+            address(l2ECOBridgeUpgrade)
         );
         assertEq(vm.activeFork(), mainnetFork);
     }
@@ -183,6 +195,8 @@ contract TokenMigrationProposalTest is Test {
         assertEq(proposal.l2gas(), l2gas);
         assertEq(address(proposal.ECOxStakingImplementation()), address(secoxBurnable));
         assertEq(address(proposal.minter()), address(minter));
+        assertEq(address(proposal.l1ECOBridgeUpgrade()), address(l1ECOBridgeUpgrade));
+        assertEq(address(proposal.l2ECOBridgeUpgrade()), address(l2ECOBridgeUpgrade));
     }
 
     function enactment_sequence() public {
@@ -218,6 +232,8 @@ contract TokenMigrationProposalTest is Test {
         assertEq(ecox.balanceOf(address(secox)), 0);
 
         //ensure that the minter address is a minter of the new token
+        console.log(address(minter));
+        console.log(token.hasRole(token.MINTER_ROLE(), address(minter)));
         assertEq(token.hasRole(token.MINTER_ROLE(), address(minter)), true);
 
         //ensure that the migration contract is a pause exempt role
@@ -231,6 +247,13 @@ contract TokenMigrationProposalTest is Test {
 
         //ensure that the migration contract is a burner
         assertEq(ecox.burners(address(migrationContract)), true);
+
+        //assert that the l1ECOBridge has the correct implementation
+        // Get implementation address from EIP-1967 storage slot
+        bytes32 implementationSlot = bytes32(uint256(keccak256("eip1967.proxy.implementation")) - 1);
+        bytes32 l1BridgeImpl = vm.load(address(l1ECOBridge), implementationSlot);
+        assertEq(address(uint160(uint256(l1BridgeImpl))), address(l1ECOBridgeUpgrade));
+
         
     }
 

@@ -7,27 +7,30 @@ import {Token} from "src/tokens/Token.sol";
 import {TokenMigrationContract} from "./TokenMigrationContract.sol";
 import {IL1CrossDomainMessenger} from "@eth-optimism/contracts/L1/messaging/IL1CrossDomainMessenger.sol";
 import {ECOxStakingBurnable} from "./upgrades/ECOxStakingBurnable.sol";
+import {IL1ECOBridge} from "src/migration/interfaces/IL1ECOBridge.sol";
 
 contract TokenMigrationProposal is Proposal {
     //L1 Addresses
     ECOx public immutable ecox; // 0xcccD1Ba9f7acD6117834E0D28F25645dECb1736a
     ECOxStaking public immutable secox; // 0x3a16f2Fee32827a9E476d0c87E454aB7C75C92D7
-    Token public immutable newToken; // TBD
-    TokenMigrationContract public immutable migrationContract; // TBD
+    Token public immutable newToken; 
+    TokenMigrationContract public immutable migrationContract; 
     IL1CrossDomainMessenger public immutable messenger; // 0x25ace71c97B33Cc4729CF772ae268934F7ab5fA1
-    address public immutable ECOxStakingImplementation; // TBD
-    address public immutable l1ECOBridge; // TBD
+    address public immutable ECOxStakingImplementation; 
+    IL1ECOBridge public immutable l1ECOBridge; 
+    address public immutable l1ECOBridgeUpgrade; 
+    address public immutable l2ECOBridgeUpgrade; 
 
     //L2 Addresses
-    address public staticMarket; // 0x6085e45604956A724556135747400e32a0D6603A
-    address public migrationOwnerOP; // TBD
-    address public l2ECOxFreeze; // old is 0xf805B07ee64f03f0aeb963883f70D0Ac0D0fE242
+    address public immutable staticMarket; // 0x6085e45604956A724556135747400e32a0D6603A
+    address public immutable migrationOwnerOP; 
+    address public immutable l2ECOxFreeze; // old is 0xf805B07ee64f03f0aeb963883f70D0Ac0D0fE242
 
     //Other
-    uint32 public l2gas; // TBD
-    address public minter; // TBD
+    uint32 public immutable l2gas; 
+    address public immutable minter; 
 
-    // reference proposal : https://etherscan.io/address/0x80CC5F92F93F5227b7057828e223Fc5BAD71b2E7#code
+    // a reference proposal : https://etherscan.io/address/0x80CC5F92F93F5227b7057828e223Fc5BAD71b2E7#code
 
     constructor(
         ECOx _ecox,
@@ -35,13 +38,15 @@ contract TokenMigrationProposal is Proposal {
         Token _newToken,
         TokenMigrationContract _migrationContract,
         IL1CrossDomainMessenger _messenger,
-        address _l1ECOBridge,
+        IL1ECOBridge _l1ECOBridge,
         address _staticMarket,
         address _migrationOwnerOP,
         address _l2ECOxFreeze,
         uint32 _l2gas,
         address _ECOxStakingImplementation,
-        address _minter
+        address _minter,
+        address _l1ECOBridgeUpgrade,
+        address _l2ECOBridgeUpgrade
     ) {
         ecox = _ecox;
         secox = _secox;
@@ -55,6 +60,8 @@ contract TokenMigrationProposal is Proposal {
         l2gas = _l2gas;
         ECOxStakingImplementation = _ECOxStakingImplementation;
         minter = _minter;
+        l1ECOBridgeUpgrade = _l1ECOBridgeUpgrade;
+        l2ECOBridgeUpgrade = _l2ECOBridgeUpgrade;
     }
 
     function name() public pure virtual override returns (string memory) {
@@ -62,7 +69,7 @@ contract TokenMigrationProposal is Proposal {
     }
 
     function description() public pure virtual override returns (string memory) {
-        return "Migrates the ECO token to a new token on Optimism and Mainnet and sweeps the old static market maker";
+        return "Migrates the ECOx token to a new token on Optimism and Mainnet and sweeps the old static market maker";
     }
 
     /**
@@ -84,7 +91,7 @@ contract TokenMigrationProposal is Proposal {
         ecox.setPauser(address(migrationContract));
 
         // newToken operations
-        newToken.grantRole(newToken.MINTER_ROLE(), address(minter)); 
+        newToken.grantRole(newToken.MINTER_ROLE(), minter); 
         newToken.grantRole(newToken.PAUSE_EXEMPT_ROLE(), address(migrationContract));
         newToken.pause();
 
@@ -97,14 +104,11 @@ contract TokenMigrationProposal is Proposal {
             abi.encodeWithSelector(bytes4(keccak256("setContractOwner(address,bool)")), migrationOwnerOP, true);
         messenger.sendMessage(staticMarket, message, 0);
         
-        // TODO add interface instead here instead of manually calling the upgradeECOx function on the l1ECOBridge to avoid solidity version issues
-        (bool success, bytes memory data) = l1ECOBridge.call(
-            abi.encodeWithSelector(
-                 bytes4(keccak256("upgradeECOx(address,uint32)")),
-                 l2ECOxFreeze,
-                 l2gas
-            )
-        );
-        require(success, "Call failed");
+        // need to upgrade the bridge implimentations
+        l1ECOBridge.upgradeL2Bridge(l2ECOBridgeUpgrade, l2gas);
+        l1ECOBridge.upgradeSelf(l1ECOBridgeUpgrade);
+
+        // need to upgrade the ecox implimentations
+        l1ECOBridge.upgradeECOx(l2ECOxFreeze, l2gas);
     }
 }
