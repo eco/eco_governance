@@ -30,6 +30,7 @@ import {IL1CrossDomainMessenger} from "@eth-optimism/contracts/L1/messaging/IL1C
 import {IL2CrossDomainMessenger} from "@eth-optimism/contracts/L2/messaging/IL2CrossDomainMessenger.sol";
 import {AddressAliasHelper} from "@eth-optimism/contracts-bedrock/contracts/vendor/AddressAliasHelper.sol";
 import {Hashing} from "lib/op-eco/node_modules/@eth-optimism/contracts-bedrock/contracts/libraries/Hashing.sol";
+import {AddressAliasHelper} from "@eth-optimism/contracts-bedrock/contracts/vendor/AddressAliasHelper.sol";
 
 contract TokenMigrationProposalTest is Test {
     uint256 mainnetFork;
@@ -70,6 +71,8 @@ contract TokenMigrationProposalTest is Test {
     //L2 Protocol Addresses
     address constant staticMarket = 0x6085e45604956A724556135747400e32a0D6603A;
     IL2ECOx l2ECOx = IL2ECOx(0xf805B07ee64f03f0aeb963883f70D0Ac0D0fE242);
+    IL2CrossDomainMessenger l2Messenger =
+        IL2CrossDomainMessenger(0x4200000000000000000000000000000000000007);
 
     // L2 To Set
     IL2ECOxFreeze l2ECOxFreeze;
@@ -89,6 +92,7 @@ contract TokenMigrationProposalTest is Test {
     );
     event SentMessageExtension1(address indexed sender, uint256 value);
     event RelayedMessage(bytes32 indexed msgHash);
+    event UpgradeSelf(address _newBridgeImpl);
     event UpgradeECOxImplementation(address _newEcoImpl);
     event Upgraded(address indexed implementation);
 
@@ -374,16 +378,18 @@ contract TokenMigrationProposalTest is Test {
         enactment_sequence();
     }
 
-    function test_L1_to_L2_messages() public {
+    function test_L1_to_L2_messages_and_enactment() public {
         // check that the active fork is mainnet
         assertEq(vm.activeFork(), mainnetFork);
+
+        uint32 localBlock = uint32(block.number);
 
         // L2 BRIDGE UPGRADE //
         // should emit SentMessage(address indexed target, address sender, bytes message, uint256 messageNonce, uint256 gasLimit);
         bytes memory message = abi.encodeWithSelector(
             l2ECOBridge.upgradeSelf.selector,
             address(l2ECOBridgeUpgrade),
-            block.number
+            localBlock
         );
 
         (bool success, bytes memory returnData) = address(l1Messenger).call(
@@ -423,7 +429,7 @@ contract TokenMigrationProposalTest is Test {
         bytes memory message2 = abi.encodeWithSelector(
             l2ECOBridge.upgradeECOx.selector,
             address(l2ECOxFreeze),
-            block.number
+            localBlock
         );
 
         vm.expectEmit(true, false, false, true, address(l1Messenger));
@@ -484,5 +490,111 @@ contract TokenMigrationProposalTest is Test {
         //enact the proposal
         vm.prank(securityCouncil);
         policy.enact(address(proposal));
+
+        //switch to optimism fork
+        vm.selectFork(optimismFork);
+
+        // check that the active fork is optimism
+        assertEq(vm.activeFork(), optimismFork);
+
+        // convert L1 messenger to L2 aliased messenger address
+        address aliasedL1Caller = AddressAliasHelper.applyL1ToL2Alias(
+            address(l1Messenger)
+        );
+
+        // should emit relayedMessage(msgHash)
+        bytes32 msgHash = Hashing.hashCrossDomainMessage(
+            currentNonce,
+            address(l1ECOBridge),
+            address(l2ECOBridge),
+            0,
+            l2gas,
+            message
+        );
+
+        bytes32 msgHash2 = Hashing.hashCrossDomainMessage(
+            currentNonce + 1,
+            address(l1ECOBridge),
+            address(l2ECOBridge),
+            0,
+            l2gas,
+            message2
+        );
+
+        bytes32 msgHash3 = Hashing.hashCrossDomainMessage(
+            currentNonce + 2,
+            address(policy),
+            address(staticMarket),
+            0,
+            l2gas,
+            message3
+        );
+
+        vm.expectEmit(true, false, false, false, address(l2ECOBridge));
+        emit UpgradeSelf(address(l2ECOBridgeUpgrade));
+
+        vm.expectEmit(true, false, false, false, address(l2Messenger));
+        emit RelayedMessage(msgHash);
+
+        // should call l2ECOBridge.upgradeSelf
+        bytes memory call = abi.encodeWithSelector(
+            l2ECOBridge.upgradeSelf.selector,
+            address(l2ECOBridgeUpgrade),
+            localBlock
+        );
+        vm.expectCall(address(l2ECOBridge), call);
+
+        vm.prank(aliasedL1Caller);
+        address(l2Messenger).call(
+            abi.encodeWithSignature(
+                "relayMessage(uint256,address,address,uint256,uint256,bytes)",
+                currentNonce,
+                address(l1ECOBridge),
+                address(l2ECOBridge),
+                0,
+                l2gas,
+                message
+            )
+        );
+
+        //upgrade l2ECOx
+
+        vm.expectEmit(true, false, false, false, address(l2ECOx));
+        emit Upgraded(address(l2ECOxFreeze));
+
+        vm.expectEmit(false, false, false, true, address(l2ECOBridge));
+        emit UpgradeECOxImplementation(address(l2ECOxFreeze));
+
+        vm.expectEmit(true, false, false, false, address(l2Messenger));
+        emit RelayedMessage(msgHash2);
+
+        // should call l2ECOBridge.upgradeSelf
+        bytes memory call2 = abi.encodeWithSelector(
+            l2ECOBridge.upgradeECOx.selector,
+            address(l2ECOxFreeze),
+            localBlock
+        );
+        vm.expectCall(address(l2ECOBridge), call2);
+
+        vm.prank(aliasedL1Caller);
+        address(l2Messenger).call(
+            abi.encodeWithSignature(
+                "relayMessage(uint256,address,address,uint256,uint256,bytes)",
+                currentNonce + 1,
+                address(l1ECOBridge),
+                address(l2ECOBridge),
+                0,
+                l2gas,
+                message2
+            )
+        );
+
+
+
+        //static market change
+
+
+
     }
+
 }
