@@ -99,16 +99,17 @@ contract TokenMigrationProposal is Proposal {
         secox.setImplementation(ECOxStakingImplementation);
         ECOxStakingBurnable(address(secox)).setBurner(address(migrationContract), true);
 
-        // OPTIMISM //
-        bytes memory message =
-            abi.encodeWithSelector(bytes4(keccak256("setContractOwner(address,bool)")), migrationOwnerOP, true);
-        messenger.sendMessage(staticMarket, message, 0);
-        
+        // OPTIMISM //        
         // need to upgrade the bridge implimentations
         l1ECOBridge.upgradeL2Bridge(l2ECOBridgeUpgrade, l2gas);
         l1ECOBridge.upgradeSelf(l1ECOBridgeUpgrade);
 
         // need to upgrade the ecox implimentations
         l1ECOBridge.upgradeECOx(l2ECOxFreeze, l2gas);
+
+        // set new static
+        bytes memory message =
+            abi.encodeWithSelector(bytes4(keccak256("setContractOwner(address,bool)")), migrationOwnerOP, true);
+        messenger.sendMessage(staticMarket, message, l2gas);
     }
 }
