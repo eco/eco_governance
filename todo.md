@@ -1,4 +1,3 @@
 - add tests for new token
-- [done] deal with edge cases (lockups / secox lockups)
 - make excalidraw of entire flow
 - add Uniswap burn? 
