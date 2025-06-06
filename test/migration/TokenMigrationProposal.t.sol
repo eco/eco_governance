@@ -12,6 +12,7 @@ import {Token} from "src/tokens/Token.sol";
 import {TokenMigrationContract} from "src/migration/TokenMigrationContract.sol";
 import {TokenMigrationProposal} from "src/migration/TokenMigrationProposal.sol";
 import {ECOxStakingBurnable} from "src/migration/upgrades/ECOxStakingBurnable.sol";
+import {ILockupContract} from "src/migration/TokenMigrationContract.sol";
 
 // Currency 1.5 contracts
 import {ECOx} from "currency-1.5/currency/ECOx.sol";
@@ -716,6 +717,177 @@ contract TokenMigrationProposalTest is Test {
         assertEq(secox.balanceOf(wallet3), 0);
         assertEq(token.balanceOf(wallet3), wallet3Entitled);
 
+        // Test lockup contract functionality
+        address[] memory lockupContracts = new address[](7);
+        lockupContracts[0] = 0x35FDFe53b3817dde163dA82deF4F586450EDf893; // sECOx only
+        lockupContracts[1] = 0x4ee22Fe220c2dCa1462B0836bE536A5e65c97cC5; // ECOx only
+        lockupContracts[2] = 0x48457B805F8Ec0213F5432489A281318069223FD; // ECOx only
+        lockupContracts[3] = 0x70483473D714e23D6C03b0aa52f98Ec30A81bF94; // ECOx only
+        lockupContracts[4] = 0xEE4bD3ec22c81Cb2E62A55dB757A64d101C70a8b; // ECOx only
+        lockupContracts[5] = 0x4923438A972Fe8bDf1994B276525d89F5DE654c9; // sECOx only
+        lockupContracts[6] = 0x0cCF53Bc6354889682020bbD2C440f8265aBe1E1; // sECOx only
+
+        // Test adding lockup contracts
+        vm.startPrank(securityCouncil);
+        
+        // Verify contracts are not initially marked as lockup contracts
+        for (uint256 i = 0; i < lockupContracts.length; i++) {
+            assertEq(migrationContract.isLockupContract(lockupContracts[i]), false);
+        }
+        
+        // Add lockup contracts
+        migrationContract.addLockupContracts(lockupContracts);
+        
+        // Verify contracts are now marked as lockup contracts
+        for (uint256 i = 0; i < lockupContracts.length; i++) {
+            assertEq(migrationContract.isLockupContract(lockupContracts[i]), true);
+        }
+
+        // Test removing some lockup contracts
+        address[] memory contractsToRemove = new address[](2);
+        contractsToRemove[0] = lockupContracts[0]; // Remove first one
+        contractsToRemove[1] = lockupContracts[6]; // Remove last one
+        
+        migrationContract.removeLockupContracts(contractsToRemove);
+        
+        // Verify removed contracts are no longer marked as lockup contracts
+        assertEq(migrationContract.isLockupContract(contractsToRemove[0]), false);
+        assertEq(migrationContract.isLockupContract(contractsToRemove[1]), false);
+        
+        // Verify remaining contracts are still marked as lockup contracts
+        for (uint256 i = 1; i < lockupContracts.length - 1; i++) {
+            assertEq(migrationContract.isLockupContract(lockupContracts[i]), true);
+        }
+        
+        vm.stopPrank();
+
+        // Re-add the removed contracts for migration testing
+        vm.prank(securityCouncil);
+        migrationContract.addLockupContracts(contractsToRemove);
+
+        // Get balances before migration for lockup contracts
+        uint256[] memory ecoxBalancesBefore = new uint256[](lockupContracts.length);
+        uint256[] memory secoxBalancesBefore = new uint256[](lockupContracts.length);
+        address[] memory beneficiaries = new address[](lockupContracts.length);
+        
+        for (uint256 i = 0; i < lockupContracts.length; i++) {
+            ecoxBalancesBefore[i] = ecox.balanceOf(lockupContracts[i]);
+            secoxBalancesBefore[i] = secox.balanceOf(lockupContracts[i]);
+            
+            // Get the real beneficiary from each lockup contract
+            if (ecoxBalancesBefore[i] > 0 || secoxBalancesBefore[i] > 0) {
+                beneficiaries[i] = ILockupContract(lockupContracts[i]).beneficiary();
+            }
+        }
+
+        // Test migration of lockup contracts with different token types
+        vm.startPrank(securityCouncil);
+        
+        // Get beneficiary token balances before migration
+        uint256[] memory beneficiaryTokenBalancesBefore = new uint256[](lockupContracts.length);
+        for (uint256 i = 0; i < lockupContracts.length; i++) {
+            if (beneficiaries[i] != address(0)) {
+                beneficiaryTokenBalancesBefore[i] = token.balanceOf(beneficiaries[i]);
+            }
+        }
+        
+        // Migrate lockup contracts one by one to test individual scenarios
+        for (uint256 i = 0; i < lockupContracts.length; i++) {
+            address lockupContract = lockupContracts[i];
+            uint256 totalEntitled = ecoxBalancesBefore[i] + secoxBalancesBefore[i];
+            
+            if (totalEntitled > 0) {
+                // Migrate the lockup contract
+                migrationContract.migrate(lockupContract);
+                
+                // Verify tokens were burned from the lockup contract
+                assertEq(ecox.balanceOf(lockupContract), 0);
+                assertEq(secox.balanceOf(lockupContract), 0);
+                
+                // Verify tokens were minted to the real beneficiary
+                uint256 expectedNewBalance = beneficiaryTokenBalancesBefore[i] + totalEntitled;
+                assertEq(token.balanceOf(beneficiaries[i]), expectedNewBalance);
+                
+                // Update the beneficiary balance for next iteration
+                beneficiaryTokenBalancesBefore[i] = expectedNewBalance;
+            }
+        }
+        
+        vm.stopPrank();
+
+        // Test mass migration of remaining contracts (none should have tokens left)
+        vm.prank(securityCouncil);
+        migrationContract.massMigrate(lockupContracts);
+        
+        // Verify all lockup contracts have zero balances
+        for (uint256 i = 0; i < lockupContracts.length; i++) {
+            assertEq(ecox.balanceOf(lockupContracts[i]), 0);
+            assertEq(secox.balanceOf(lockupContracts[i]), 0);
+        }
+    }
+
+    function test_lockup_contract_access_control() public {
+        enactment_sequence();
+        
+        address[] memory lockupContracts = new address[](1);
+        lockupContracts[0] = 0x35FDFe53b3817dde163dA82deF4F586450EDf893;
+        
+        // Test that non-admin cannot add lockup contracts
+        vm.prank(alice);
+        vm.expectRevert();
+        migrationContract.addLockupContracts(lockupContracts);
+        
+        // Test that non-admin cannot remove lockup contracts
+        vm.prank(securityCouncil);
+        migrationContract.addLockupContracts(lockupContracts);
+        
+        vm.prank(alice);
+        vm.expectRevert();
+        migrationContract.removeLockupContracts(lockupContracts);
+        
+        // Test that non-migrator cannot migrate
+        vm.prank(alice);
+        vm.expectRevert();
+        migrationContract.migrate(lockupContracts[0]);
+    }
+
+    function test_lockup_contract_edge_cases() public {
+        enactment_sequence();
+        
+        address[] memory lockupContracts = new address[](1);
+        lockupContracts[0] = 0x35FDFe53b3817dde163dA82deF4F586450EDf893;
+        
+        vm.startPrank(securityCouncil);
+        
+        // Test adding the same contract twice should revert
+        migrationContract.addLockupContracts(lockupContracts);
+        vm.expectRevert("Lockup contract already added");
+        migrationContract.addLockupContracts(lockupContracts);
+        
+        // Test removing a contract that wasn't added should revert
+        address[] memory nonExistentContracts = new address[](1);
+        nonExistentContracts[0] = 0x1234567890123456789012345678901234567890;
+        vm.expectRevert("Lockup contract not found");
+        migrationContract.removeLockupContracts(nonExistentContracts);
+
+        // Test migrating a contract without beneficiary should revert
+        address invalidContract = 0x23683733A1f66f737154E9612BE1e158126993B2;
+        lockupContracts[0] = invalidContract;
+        migrationContract.addLockupContracts(lockupContracts);
+        
+        // Mock some balance
+        deal(address(ecox), invalidContract, 1000);
+        
+        vm.mockCallRevert(
+            invalidContract,
+            abi.encodeWithSignature("beneficiary()"),
+            "Contract has no beneficiary"
+        );
+        
+        vm.expectRevert("Contract has no beneficiary");
+        migrationContract.migrate(invalidContract);
+        
+        vm.stopPrank();
     }
 
 }

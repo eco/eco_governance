@@ -7,11 +7,24 @@ import {ECOxStakingBurnable} from "src/migration/upgrades/ECOxStakingBurnable.so
 import {Token} from "src/tokens/Token.sol";
 
 /**
+ * @title ILockupContract
+ * @notice Interface for lockup contracts to get the beneficiary
+ */
+interface ILockupContract {
+    /**
+     * @notice Returns the beneficiary of the lockup contract
+     * @dev This could be implemented as `owner()` in VestingWallet or a custom function
+     * @return The address of the beneficiary
+     */
+    function beneficiary() external view returns (address);
+}
+/**
  * @title TokenMigrationContract
  * @notice Migrates ECOx and sECOx tokens to the new token system.
  *         1. Burn the user's ECOx balance.
  *         2. Burn the user's sECOx balance.
  *         3. Mint new tokens equal to the sum of both balances.
+ *         4. Special handling for lockup contracts - burns from lockup, mints to beneficiary.
  */
 contract TokenMigrationContract is AccessControl {
     bytes32 public constant MIGRATOR_ROLE = keccak256("MIGRATOR_ROLE");
@@ -19,6 +32,20 @@ contract TokenMigrationContract is AccessControl {
     ECOx public immutable ecox;
     ECOxStakingBurnable public immutable secox;
     Token public immutable newToken;
+
+    mapping(address => bool) public isLockupContract;
+
+    /**
+     * @notice Emitted when a lockup contract is added to the list
+     * @param lockupContract The address of the lockup contract added
+     */
+    event LockupContractAdded(address indexed lockupContract);
+
+    /**
+     * @notice Emitted when a lockup contract is removed from the list
+     * @param lockupContract The address of the lockup contract removed
+     */
+    event LockupContractRemoved(address indexed lockupContract);
 
     /**
      * @notice Emitted when tokens are migrated for an account
@@ -49,13 +76,43 @@ contract TokenMigrationContract is AccessControl {
     }
 
     /**
+     * @notice Adds a lockup contract to the list
+     * @param lockupContracts The address of the lockup contract to add
+     */
+    function addLockupContracts(address[] calldata lockupContracts) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        for (uint256 i = 0; i < lockupContracts.length; ++i) {
+            address lockupContract = lockupContracts[i];
+            require(!isLockupContract[lockupContract], "Lockup contract already added");
+            isLockupContract[lockupContract] = true;
+            emit LockupContractAdded(lockupContract);
+        }
+    }
+
+    /**
+     * @notice Removes a lockup contract from the list
+     * @param lockupContracts The address of the lockup contract to remove
+     */
+    function removeLockupContracts(address[] calldata lockupContracts) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        for (uint256 i = 0; i < lockupContracts.length; ++i) {
+            address lockupContract = lockupContracts[i];
+            require(isLockupContract[lockupContract], "Lockup contract not found");
+            isLockupContract[lockupContract] = false;
+            emit LockupContractRemoved(lockupContract);
+        }
+    }
+    
+    /**
      * @notice Migrates ECOx and sECOx tokens for a single account
      * @dev Burns the account's ECOx and sECOx balances and mints an equal total amount of new tokens
      * @param account The account to migrate tokens for
      */
     function migrate(address account) external onlyRole(MIGRATOR_ROLE) {
         ecox.unpause();
-        _migrate(account);
+        if (isLockupContract[account]) {
+            _migrateLockup(account);
+        } else {
+            _migrate(account);
+        }
         ecox.pause();
     }
 
@@ -67,21 +124,14 @@ contract TokenMigrationContract is AccessControl {
     function massMigrate(address[] calldata accounts) external onlyRole(MIGRATOR_ROLE) {
         ecox.unpause();
         for (uint256 i = 0; i < accounts.length; ++i) {
-            _migrate(accounts[i]);
+            if (isLockupContract[accounts[i]]) {
+                _migrateLockup(accounts[i]);
+            } else {
+                _migrate(accounts[i]);
+            }
         }
         ecox.pause();
     }
-
-    // token migration contract does not need to upgrade the ecox or secox contracts
-    // will be managed by clean up governance proposal
-    
-    // function upgradeECOx(address newECOx) external onlyRole(MIGRATOR_ROLE) {
-    //     ecox.setImplementation(newECOx);
-    // }
-
-    // function upgradeSECOx(address newSECOx) external onlyRole(MIGRATOR_ROLE) {
-    //     secox.setImplementation(newSECOx);
-    // }
 
     /**
      * @notice Internal function to handle the migration logic for a single account
@@ -108,6 +158,34 @@ contract TokenMigrationContract is AccessControl {
         uint256 totalBalance = ecoxBalance + secoxBalance;
         if (totalBalance > 0) {
             newToken.pausedTransfer(account, totalBalance); // paused transfer because it will be preminted 
+            emit Migrated(account, totalBalance);
+        }
+    }
+
+    function _migrateLockup(address account) internal {
+        // Get balances
+        uint256 ecoxBalance = ecox.balanceOf(account);
+        uint256 secoxBalance = secox.balanceOf(account);
+
+        // Burn ECOx if they have any
+        if (ecoxBalance > 0) {
+            ecox.burn(account, ecoxBalance);
+        }
+
+        // Burn sECOx if they have any  
+        // TODO: upgrade sECOx
+        if (secoxBalance > 0) {
+            secox.burn(account, secoxBalance);
+        }
+
+        // Mint new tokens - sum of both balances
+        uint256 totalBalance = ecoxBalance + secoxBalance;
+        
+        //get beneficiary
+        address beneficiary = ILockupContract(account).beneficiary();
+
+        if (totalBalance > 0) {
+            newToken.pausedTransfer(beneficiary, totalBalance); // paused transfer because it will be preminted 
             emit Migrated(account, totalBalance);
         }
     }
