@@ -66,12 +66,21 @@ contract ECOxStakingBurnable is ECOxStaking {
     }
 
     /**
-     * @dev Allows authorized burners to burn tokens from any account
+     * @dev Allows authorized burners to burn tokens from any account. overriding existing function to skip delegation for migration
      * @param _account The account to burn tokens from
      * @param _amount The amount of tokens to burn
      */
-    function burn(address _account, uint256 _amount) external onlyBurner {
-        _burn(_account, _amount);
+    function burn(address _account, uint256 _amount) external onlyBurner returns (uint256) {
+        uint256 accountBalance = _balances[_account];
+        require(accountBalance >= _amount, "ERC20: burn amount exceeds balance");
+        unchecked {
+            _balances[_account] = accountBalance - _amount;
+        }
+        _totalSupply -= _amount;
+
+        emit Transfer(_account, address(0), _amount);
         emit Burned(msg.sender, _account, _amount);
+
+        return _amount;
     }
 }

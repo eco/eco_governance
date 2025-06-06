@@ -94,6 +94,7 @@ contract TokenMigrationProposal is Proposal {
         ecox.pause();
         ecox.setPauser(address(migrationContract));
 
+
         // newToken operations
         newToken.grantRole(newToken.MINTER_ROLE(), minter); 
         newToken.grantRole(newToken.PAUSE_EXEMPT_ROLE(), address(migrationContract));

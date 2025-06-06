@@ -697,10 +697,11 @@ contract TokenMigrationProposalTest is Test {
         uint256 wallet3Entitled = ecox.balanceOf(wallet3) + secox.balanceOf(wallet3);
 
         //check that the migration contract can migrate tokens
-        vm.prank(securityCouncil);
+        vm.startPrank(securityCouncil);
         migrationContract.migrate(wallet1); //migrate wallet 1
         migrationContract.migrate(wallet2); //migrate wallet 2
         migrationContract.migrate(wallet3); //migrate wallet 3
+        vm.stopPrank();
 
         //check that the secox and ecox balances of the wallets are 0
         assertEq(ecox.balanceOf(wallet1), 0);
