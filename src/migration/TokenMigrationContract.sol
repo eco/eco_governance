@@ -189,4 +189,6 @@ contract TokenMigrationContract is AccessControl {
             emit Migrated(account, totalBalance);
         }
     }
+
+    // TODO: add sweep function to policy treasury fopr remainder
 }
