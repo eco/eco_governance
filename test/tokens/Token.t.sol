@@ -45,41 +45,24 @@ contract TokenTest is Test {
     uint256 constant FOUNDRY_OWNER_PK = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
 
     function setUp() public {
-        
         // Deploy implementation
         Token implementation = new Token();
-        
+
         // Deploy proxy with initialization
-        bytes memory initData = abi.encodeWithSelector(
-            Token.initialize.selector,
-            admin,
-            pauser,
-            NAME,
-            SYMBOL
-        );
-        
-        address tokenProxy = Upgrades.deployTransparentProxy(
-            address(implementation),
-            admin,
-            initData
-        );
-        
+        bytes memory initData = abi.encodeWithSelector(Token.initialize.selector, admin, pauser, NAME, SYMBOL);
+
+        address tokenProxy = Upgrades.deployTransparentProxy(address(implementation), admin, initData);
+
         // Set token instance to proxy
         token = Token(tokenProxy);
     }
 
     function test_InitializerCanRunOnce() public {
         // First initialize should revert (already initialized)
-        bytes memory initData = abi.encodeWithSelector(
-            Token.initialize.selector,
-            admin,
-            pauser,
-            NAME,
-            SYMBOL
-        );
+        bytes memory initData = abi.encodeWithSelector(Token.initialize.selector, admin, pauser, NAME, SYMBOL);
         // Try to call initialize again via proxy
         vm.expectRevert("Initializable: contract is already initialized");
-        (bool success, ) = address(token).call(initData);
+        (bool success,) = address(token).call(initData);
         assertTrue(!success, "Should not be able to initialize twice");
     }
 
@@ -87,16 +70,10 @@ contract TokenTest is Test {
         // Deploy implementation directly
         Token implementation = new Token();
         // Try to initialize the implementation contract
-        bytes memory initData = abi.encodeWithSelector(
-            Token.initialize.selector,
-            admin,
-            pauser,
-            NAME,
-            SYMBOL
-        );
+        bytes memory initData = abi.encodeWithSelector(Token.initialize.selector, admin, pauser, NAME, SYMBOL);
         // Expect revert when trying to initialize the implementation
         vm.expectRevert("Initializable: contract is not initializing");
-        (bool success, ) = address(implementation).call(initData);
+        (bool success,) = address(implementation).call(initData);
         assertTrue(!success, "Implementation should not be initializable");
     }
 
@@ -144,7 +121,11 @@ contract TokenTest is Test {
     function test_OnlyAdminCanGrantRoles() public {
         // Non-admin address fails to grantRole
         vm.startPrank(user1);
-        vm.expectRevert(abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", user1, token.DEFAULT_ADMIN_ROLE()));
+        vm.expectRevert(
+            abi.encodeWithSignature(
+                "AccessControlUnauthorizedAccount(address,bytes32)", user1, token.DEFAULT_ADMIN_ROLE()
+            )
+        );
         token.grantRole(MINTER_ROLE, user2);
         vm.stopPrank();
         // Admin can grant and revoke each custom role
@@ -159,7 +140,9 @@ contract TokenTest is Test {
     function test_RoleBasedModifiers() public {
         // Functions protected by onlyRole(X) revert if caller lacks role X
         vm.startPrank(user1);
-        vm.expectRevert(abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", user1, MINTER_ROLE));
+        vm.expectRevert(
+            abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", user1, MINTER_ROLE)
+        );
         token.mint(user2, 100);
         vm.stopPrank();
         // After revokeRole, access is revoked immediately
@@ -170,7 +153,9 @@ contract TokenTest is Test {
         assertFalse(token.hasRole(MINTER_ROLE, user1));
         vm.stopPrank();
         vm.startPrank(user1);
-        vm.expectRevert(abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", user1, MINTER_ROLE));
+        vm.expectRevert(
+            abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", user1, MINTER_ROLE)
+        );
         token.mint(user2, 100);
         vm.stopPrank();
     }
@@ -248,7 +233,9 @@ contract TokenTest is Test {
     function test_OnlyMinterCanMint() public {
         // Non-minter cannot mint
         vm.startPrank(user1);
-        vm.expectRevert(abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", user1, MINTER_ROLE));
+        vm.expectRevert(
+            abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", user1, MINTER_ROLE)
+        );
         token.mint(user1, 100);
         vm.stopPrank();
         // Minter can mint
@@ -273,7 +260,9 @@ contract TokenTest is Test {
         vm.stopPrank();
         // Non-burner cannot burn
         vm.startPrank(user1);
-        vm.expectRevert(abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", user1, BURNER_ROLE));
+        vm.expectRevert(
+            abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", user1, BURNER_ROLE)
+        );
         token.burn(user1, 50);
         vm.stopPrank();
         // Burner can burn
@@ -316,7 +305,9 @@ contract TokenTest is Test {
     function test_OnlyPauserCanPauseAndUnpause() public {
         // Non-pauser cannot pause
         vm.startPrank(user1);
-        vm.expectRevert(abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", user1, PAUSER_ROLE));
+        vm.expectRevert(
+            abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", user1, PAUSER_ROLE)
+        );
         token.pause();
         vm.stopPrank();
         // Pauser can pause
@@ -326,7 +317,9 @@ contract TokenTest is Test {
         vm.stopPrank();
         // Non-pauser cannot unpause
         vm.startPrank(user1);
-        vm.expectRevert(abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", user1, PAUSER_ROLE));
+        vm.expectRevert(
+            abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", user1, PAUSER_ROLE)
+        );
         token.unpause();
         vm.stopPrank();
         // Pauser can unpause
@@ -382,7 +375,7 @@ contract TokenTest is Test {
         token.pausedTransfer(user2, 10);
         vm.stopPrank();
     }
-    
+
     function test_PausedTransferFailsIfLacksRole() public {
         // Ensure contract is paused
         vm.startPrank(pauser);
@@ -390,7 +383,9 @@ contract TokenTest is Test {
         vm.stopPrank();
         // pausedTransfer should fail if caller lacks role
         vm.startPrank(user2);
-        vm.expectRevert(abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", user2, PAUSE_EXEMPT_ROLE));
+        vm.expectRevert(
+            abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", user2, PAUSE_EXEMPT_ROLE)
+        );
         token.pausedTransfer(user1, 10);
         vm.stopPrank();
     }
@@ -480,9 +475,7 @@ contract TokenTest is Test {
                 deadline
             )
         );
-        bytes32 digest = keccak256(
-            abi.encodePacked("\x19\x01", domainSeparator, structHash)
-        );
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(FOUNDRY_OWNER_PK, digest);
 
         // First permit should succeed
@@ -503,9 +496,7 @@ contract TokenTest is Test {
                 deadline
             )
         );
-        bytes32 digest2 = keccak256(
-            abi.encodePacked("\x19\x01", domainSeparator, structHash2)
-        );
+        bytes32 digest2 = keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash2));
         address recoveredSigner = ecrecover(digest2, v, r, s);
         vm.expectRevert(abi.encodeWithSignature("ERC2612InvalidSigner(address,address)", recoveredSigner, owner));
         token.permit(owner, spender, value, deadline, v, r, s);
@@ -638,7 +629,7 @@ contract TokenTest is Test {
         vm.expectEmit(true, true, false, true);
         emit Transfer(address(0), user1, 50);
         token.mint(user1, 50);
-        
+
         vm.expectEmit(true, true, false, true);
         emit Transfer(address(0), user2, 75);
         token.mint(user2, 75);
@@ -656,7 +647,7 @@ contract TokenTest is Test {
         vm.expectEmit(true, true, false, true);
         emit Transfer(user1, address(0), 50);
         token.burn(user1, 50);
-        
+
         vm.expectEmit(true, true, false, true);
         emit Transfer(user2, address(0), 75);
         token.burn(user2, 75);
@@ -667,11 +658,11 @@ contract TokenTest is Test {
         vm.expectEmit(true, true, false, true);
         emit Transfer(address(0), user1, 200);
         token.mint(user1, 200);
-        
+
         vm.expectEmit(true, true, false, true);
         emit Transfer(user1, address(0), 100);
         token.burn(user1, 100);
-        
+
         vm.expectEmit(true, true, false, true);
         emit Transfer(address(0), user1, 50);
         token.mint(user1, 50);
@@ -682,15 +673,15 @@ contract TokenTest is Test {
         vm.expectEmit(true, true, false, true);
         emit Transfer(address(0), user1, 100);
         token.mint(user1, 100);
-        
+
         vm.expectEmit(true, true, false, true);
         emit Transfer(address(0), user2, 100);
         token.mint(user2, 100);
-        
+
         vm.expectEmit(true, true, false, true);
         emit Transfer(user1, address(0), 50);
         token.burn(user1, 50);
-        
+
         vm.expectEmit(true, true, false, true);
         emit Transfer(user2, address(0), 50);
         token.burn(user2, 50);
@@ -774,16 +765,22 @@ contract TokenTest is Test {
     }
 
     // Helper for EIP-2612 permit digest
-    function getPermitDigest(address owner, address spender, uint256 value, uint256 nonce, uint256 deadline) internal view returns (bytes32) {
-        bytes32 structHash = keccak256(abi.encode(
-            keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
-            owner,
-            spender,
-            value,
-            nonce,
-            deadline
-        ));
+    function getPermitDigest(address owner, address spender, uint256 value, uint256 nonce, uint256 deadline)
+        internal
+        view
+        returns (bytes32)
+    {
+        bytes32 structHash = keccak256(
+            abi.encode(
+                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                owner,
+                spender,
+                value,
+                nonce,
+                deadline
+            )
+        );
         return keccak256(abi.encodePacked("\x19\x01", token.DOMAIN_SEPARATOR(), structHash));
     }
 }
-  //TODO: add upgrade tests? 
+//TODO: add upgrade tests?

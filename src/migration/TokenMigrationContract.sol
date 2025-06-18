@@ -26,6 +26,7 @@ interface ILockupContract {
  *         3. Mint new tokens equal to the sum of both balances.
  *         4. Special handling for lockup contracts - burns from lockup, mints to beneficiary.
  */
+
 contract TokenMigrationContract is AccessControl {
     bytes32 public constant MIGRATOR_ROLE = keccak256("MIGRATOR_ROLE");
 
@@ -61,12 +62,7 @@ contract TokenMigrationContract is AccessControl {
      * @param _newToken The new token contract to mint to
      * @param admin The address to grant admin and migrator roles to
      */
-    constructor(
-        ECOx _ecox,
-        ECOxStakingBurnable _secox,
-        Token _newToken,
-        address admin
-    ) {
+    constructor(ECOx _ecox, ECOxStakingBurnable _secox, Token _newToken, address admin) {
         ecox = _ecox;
         secox = _secox;
         newToken = _newToken;
@@ -100,7 +96,7 @@ contract TokenMigrationContract is AccessControl {
             emit LockupContractRemoved(lockupContract);
         }
     }
-    
+
     /**
      * @notice Migrates ECOx and sECOx tokens for a single account
      * @dev Burns the account's ECOx and sECOx balances and mints an equal total amount of new tokens
@@ -148,7 +144,7 @@ contract TokenMigrationContract is AccessControl {
             ecox.burn(account, ecoxBalance);
         }
 
-        // Burn sECOx if they have any  
+        // Burn sECOx if they have any
         // TODO: upgrade sECOx
         if (secoxBalance > 0) {
             secox.burn(account, secoxBalance);
@@ -157,7 +153,7 @@ contract TokenMigrationContract is AccessControl {
         // Mint new tokens - sum of both balances
         uint256 totalBalance = ecoxBalance + secoxBalance;
         if (totalBalance > 0) {
-            newToken.pausedTransfer(account, totalBalance); // paused transfer because it will be preminted 
+            newToken.pausedTransfer(account, totalBalance); // paused transfer because it will be preminted
             emit Migrated(account, totalBalance);
         }
     }
@@ -172,7 +168,7 @@ contract TokenMigrationContract is AccessControl {
             ecox.burn(account, ecoxBalance);
         }
 
-        // Burn sECOx if they have any  
+        // Burn sECOx if they have any
         // TODO: upgrade sECOx
         if (secoxBalance > 0) {
             secox.burn(account, secoxBalance);
@@ -180,12 +176,12 @@ contract TokenMigrationContract is AccessControl {
 
         // Mint new tokens - sum of both balances
         uint256 totalBalance = ecoxBalance + secoxBalance;
-        
+
         //get beneficiary
         address beneficiary = ILockupContract(account).beneficiary();
 
         if (totalBalance > 0) {
-            newToken.pausedTransfer(beneficiary, totalBalance); // paused transfer because it will be preminted 
+            newToken.pausedTransfer(beneficiary, totalBalance); // paused transfer because it will be preminted
             emit Migrated(account, totalBalance);
         }
     }

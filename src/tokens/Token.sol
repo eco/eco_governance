@@ -70,6 +70,6 @@ contract Token is ERC20PermitUpgradeable, PausableUpgradeable, AccessControlUpgr
         return true;
     }
 
-    uint256[50] private __gap; 
+    uint256[50] private __gap;
     // no need to include increaseAllowance, decreaseAllowance -- see https://github.com/OpenZeppelin/openzeppelin-contracts/issues/4583
 }

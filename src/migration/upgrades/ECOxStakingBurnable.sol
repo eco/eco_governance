@@ -5,19 +5,17 @@ import {ECOxStaking} from "currency-1.5/governance/community/ECOxStaking.sol";
 import {Policy} from "currency-1.5/policy/Policy.sol";
 import {IERC20} from "@openzeppelin-currency/contracts/token/ERC20/IERC20.sol";
 
-
 /**
  * @title ECOxStakingBurnable
  * @dev Extends ECOxStaking to allow authorized burners to burn staked ECOx tokens
  */
-
 contract ECOxStakingBurnable is ECOxStaking {
     /// mapping of addresses authorized to burn tokens
     mapping(address => bool) public burners;
-    
+
     /// error for unauthorized burn attempts
     error UnauthorizedBurner();
-    
+
     /// error for trying to set zero address as burner
     error NoZeroBurner();
 
@@ -36,10 +34,7 @@ contract ECOxStakingBurnable is ECOxStaking {
      */
     event Burned(address indexed burner, address indexed account, uint256 amount);
 
-    constructor(
-        Policy _policy,
-        IERC20 _ecoXAddr
-    ) ECOxStaking(_policy, _ecoXAddr) {}
+    constructor(Policy _policy, IERC20 _ecoXAddr) ECOxStaking(_policy, _ecoXAddr) {}
 
     /**
      * @dev Modifier to check if the caller is an authorized burner
@@ -60,7 +55,7 @@ contract ECOxStakingBurnable is ECOxStaking {
         if (_burner == address(0)) {
             revert NoZeroBurner();
         }
-        
+
         burners[_burner] = _authorized;
         emit BurnerUpdated(_burner, _authorized);
     }

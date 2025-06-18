@@ -6,7 +6,6 @@ import {Initializable} from "@openzeppelin-op-eco/contracts-upgradeable/proxy/ut
 import {PausableUpgradeable} from "@openzeppelin-op-eco/contracts-upgradeable/security/PausableUpgradeable.sol";
 
 contract L2ECOxFreeze is L2ECOx, PausableUpgradeable {
-
     mapping(address => bool) public pausers;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -20,7 +19,6 @@ contract L2ECOxFreeze is L2ECOx, PausableUpgradeable {
         pausers[newTokenRoleAdmin] = true;
         _pause();
     }
-
 
     modifier onlyPauser() {
         require(pausers[msg.sender], "L2ECOx: not pauser");
@@ -39,21 +37,11 @@ contract L2ECOxFreeze is L2ECOx, PausableUpgradeable {
         _unpause();
     }
 
-    function transfer(address to, uint256 amount)
-        public
-        override
-        whenNotPaused
-        returns (bool)
-    {
+    function transfer(address to, uint256 amount) public override whenNotPaused returns (bool) {
         return super.transfer(to, amount);
     }
 
-    function transferFrom(address from, address to, uint256 amount)
-        public
-        override
-        whenNotPaused
-        returns (bool)
-    {
+    function transferFrom(address from, address to, uint256 amount) public override whenNotPaused returns (bool) {
         return super.transferFrom(from, to, amount);
     }
 }
