@@ -382,7 +382,7 @@ contract TokenTest is Test {
         token.pausedTransfer(user2, 10);
         vm.stopPrank();
     }
-
+    
     function test_PausedTransferFailsIfLacksRole() public {
         // Ensure contract is paused
         vm.startPrank(pauser);
@@ -392,6 +392,26 @@ contract TokenTest is Test {
         vm.startPrank(user2);
         vm.expectRevert(abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", user2, PAUSE_EXEMPT_ROLE));
         token.pausedTransfer(user1, 10);
+        vm.stopPrank();
+    }
+
+    function test_PausedTransferSucceedsWithRole() public {
+        // Grant PAUSE_EXEMPT_ROLE and mint tokens to user1
+        vm.startPrank(admin);
+        token.grantRole(PAUSE_EXEMPT_ROLE, user1);
+        token.mint(user1, 100);
+        vm.stopPrank();
+
+        // Pause the contract
+        vm.startPrank(pauser);
+        token.pause();
+        vm.stopPrank();
+
+        // Verify paused transfer works with role
+        vm.startPrank(user1);
+        token.pausedTransfer(user2, 50);
+        assertEq(token.balanceOf(user1), 50);
+        assertEq(token.balanceOf(user2), 50);
         vm.stopPrank();
     }
 
