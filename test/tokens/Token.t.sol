@@ -45,8 +45,6 @@ contract TokenTest is Test {
     uint256 constant FOUNDRY_OWNER_PK = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
 
     function setUp() public {
-        // Deploy proxy admin with admin as owner
-        proxyAdmin = new ProxyAdmin(admin);
         
         // Deploy implementation
         Token implementation = new Token();
@@ -62,7 +60,7 @@ contract TokenTest is Test {
         
         address tokenProxy = Upgrades.deployTransparentProxy(
             address(implementation),
-            address(proxyAdmin),
+            admin,
             initData
         );
         
