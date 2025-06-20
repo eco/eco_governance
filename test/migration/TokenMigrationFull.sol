@@ -89,6 +89,8 @@ contract TokenMigrationProposalTest is Test {
     event Upgraded(address indexed implementation);
     event NewContractOwner(address indexed contractOwner, bool isContractOwnerL2);
 
+    mapping(address => bool) public excludedWallets;
+
     function setUp() public {
         //fork networks 22597199 mainnet, 136514625 optimism
         optimismFork = vm.createSelectFork(optimismRpcUrl, 137415601);
@@ -275,10 +277,9 @@ contract TokenMigrationProposalTest is Test {
 
         // excluded wallets
         // claim, l1bridge, secox
-        address[] memory excludedWallets = new address[](3);
-        excludedWallets[0] = address(claimContract);
-        excludedWallets[1] = address(l1ECOBridge);
-        excludedWallets[2] = address(secox);
+        excludedWallets[address(claimContract)] = true;
+        excludedWallets[address(l1ECOBridge)] = true;
+        excludedWallets[address(secox)] = true;
 
         // Test lockup contract functionality
         // Read lockup contracts from CSV file
@@ -318,8 +319,131 @@ contract TokenMigrationProposalTest is Test {
         }
 
         // TODO migrate all the normal wallets
+        // here we need to read all the addresses from test/migration/files/ecox.csv and test/migration/files/secox.csv
+        // and we need to read them into two arrays
+        // if the address is in the excluded wallets array, we need to skip it
+
+        // Read ECOx addresses from CSV file
+        uint256 ecoxLineCount = 0;
+        string memory ecoxLine;
+        while (bytes(ecoxLine = vm.readLine("test/migration/files/ecox.csv")).length > 0) {
+            ecoxLineCount++;
+        }
+        
+        // Create array with correct size (subtract 1 for header)
+        address[] memory ecoxAddresses = new address[](ecoxLineCount - 1);
+        
+        // Reset file pointer and read again to populate array
+        vm.closeFile("test/migration/files/ecox.csv");
+        vm.readFile("test/migration/files/ecox.csv");
+        
+        // Skip header line
+        vm.readLine("test/migration/files/ecox.csv");
+        
+        // Read and parse addresses, skipping excluded wallets
+        uint256 validAddressCount = 0;
+        for (uint256 i = 0; i < ecoxLineCount - 1; i++) {
+            ecoxLine = vm.readLine("test/migration/files/ecox.csv");
+            if (bytes(ecoxLine).length > 0) {
+                address addr = vm.parseAddress(ecoxLine);
+                if (!excludedWallets[addr]) {
+                    ecoxAddresses[validAddressCount] = addr;
+                    validAddressCount++;
+                }
+            }
+        }
+
+        // Read sECOx addresses from CSV file
+        uint256 secoxLineCount = 0;
+        string memory secoxLine;
+        while (bytes(secoxLine = vm.readLine("test/migration/files/secox.csv")).length > 0) {
+            secoxLineCount++;
+        }
+        
+        // Create array with correct size (subtract 1 for header)
+        address[] memory secoxAddresses = new address[](secoxLineCount - 1);
+        
+        // Reset file pointer and read again to populate array
+        vm.closeFile("test/migration/files/secox.csv");
+        vm.readFile("test/migration/files/secox.csv");
+        
+        // Skip header line
+        vm.readLine("test/migration/files/secox.csv");
+        
+        // Read and parse addresses
+        for (uint256 i = 0; i < secoxLineCount - 1; i++) {
+            secoxLine = vm.readLine("test/migration/files/secox.csv");
+            if (bytes(secoxLine).length > 0) {
+                secoxAddresses[i] = vm.parseAddress(secoxLine);
+            }
+        }
+
         vm.startPrank(securityCouncil);
-        // logic here
+        //migrate all the lockups
+        uint256 batchSize = 50;
+        
+        // Migrate lockup contracts in batches
+        uint256 numBatches = (lockupContracts.length + batchSize - 1) / batchSize;
+        for (uint256 batch = 0; batch < numBatches; batch++) {
+            address[] memory batchAddresses = new address[](batchSize);
+            uint256 start = batch * batchSize;
+            uint256 end = start + batchSize;
+            if (end > lockupContracts.length) {
+                end = lockupContracts.length;
+            }
+            
+            uint256 currentBatchSize = end - start;
+            for (uint256 i = 0; i < currentBatchSize; i++) {
+                batchAddresses[i] = lockupContracts[start + i];
+            }
+            
+            migrationContract.massMigrate(batchAddresses);
+        }
+
+        // Migrate ECOx addresses in batches
+        numBatches = (ecoxAddresses.length + batchSize - 1) / batchSize;
+        for (uint256 batch = 0; batch < numBatches; batch++) {
+            address[] memory batchAddresses = new address[](batchSize);
+            uint256 start = batch * batchSize;
+            uint256 end = start + batchSize;
+            if (end > ecoxAddresses.length) {
+                end = ecoxAddresses.length;
+            }
+            
+            uint256 currentBatchSize = end - start;
+            for (uint256 i = 0; i < currentBatchSize; i++) {
+                batchAddresses[i] = ecoxAddresses[start + i];
+            }
+            
+            migrationContract.massMigrate(batchAddresses);
+        }
+
+        // Migrate sECOx addresses in batches
+        numBatches = (secoxAddresses.length + batchSize - 1) / batchSize;
+        for (uint256 batch = 0; batch < numBatches; batch++) {
+            address[] memory batchAddresses = new address[](batchSize);
+            uint256 start = batch * batchSize;
+            uint256 end = start + batchSize;
+            if (end > secoxAddresses.length) {
+                end = secoxAddresses.length;
+            }
+            
+            uint256 currentBatchSize = end - start;
+            for (uint256 i = 0; i < currentBatchSize; i++) {
+                batchAddresses[i] = secoxAddresses[start + i];
+            }
+            
+            migrationContract.massMigrate(batchAddresses);
+        }
+
+        //print total supply of ecox and secox balances after migration
+        console.log("totalSupplyECOx after migration", ecox.totalSupply());
+        console.log("totalSupplySECOx after migration", secox.totalSupply());
+
+        //print total supply of ecox and secox balances before migration
+        console.log("totalSupplyECOx before migration", totalSupplyECOx);
+        console.log("totalSupplySECOx before migration", totalSupplySECOx);
+
         vm.stopPrank();
     }
 } 
