@@ -783,4 +783,4 @@ contract TokenTest is Test {
         return keccak256(abi.encodePacked("\x19\x01", token.DOMAIN_SEPARATOR(), structHash));
     }
 }
-//TODO: add upgrade tests?
+

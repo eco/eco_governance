@@ -186,5 +186,18 @@ contract TokenMigrationContract is AccessControl {
         }
     }
 
-    // TODO: add sweep function to policy treasury fopr remainder
+    /**
+     * @notice Sweeps any remaining tokens to the policy treasury
+     * @dev Can only be called by the policy treasury
+     */
+    function sweep(address policy) external onlyRole(MIGRATOR_ROLE) {
+        uint256 balance = newToken.balanceOf(address(this));
+        if (balance > 0) {
+            if (newToken.paused()) {
+                newToken.pausedTransfer(address(policy), balance);
+            } else {
+                newToken.transfer(address(policy), balance);
+            }
+        }
+    }
 }
