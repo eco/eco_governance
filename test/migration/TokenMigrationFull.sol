@@ -77,6 +77,9 @@ contract TokenMigrationProposalTest is Test {
     address migrationOwnerOP;
     uint32 l2gas = 10000;
 
+    // State variable for excluded ECOx calculation
+    uint256 public excludedECOx;
+
     //events
     event UpgradeL2Bridge(address proposal);
     event UpgradeL2ECOx(address proposal);
@@ -159,6 +162,11 @@ contract TokenMigrationProposalTest is Test {
             address(claimContract)
         );
         assertEq(vm.activeFork(), mainnetFork);
+
+        // get total supply of ecox in claim, l1ECOBridge
+        excludedECOx = ecox.balanceOf(address(claimContract)) + ecox.balanceOf(address(l1ECOBridge));
+        console.log("excludedECOx", excludedECOx);
+
     }
 
     // does not test l1 messages sent to l2
@@ -171,7 +179,7 @@ contract TokenMigrationProposalTest is Test {
         vm.selectFork(optimismFork);
         bytes32 slot2 = vm.load(address(l2ECOx), 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103);
         console.logBytes32(slot2);
-
+        
         //select mainnet fork
         vm.selectFork(mainnetFork);
 
@@ -439,10 +447,19 @@ contract TokenMigrationProposalTest is Test {
         //print total supply of ecox and secox balances after migration
         console.log("totalSupplyECOx after migration", ecox.totalSupply());
         console.log("totalSupplySECOx after migration", secox.totalSupply());
+        
+        // Assert both token supplies are 0 after migration
+        assertEq(ecox.totalSupply(), 0, "ECOx supply should be 0 after migration");
+        assertEq(secox.totalSupply(), 0, "sECOx supply should be 0 after migration");
 
-        //print total supply of ecox and secox balances before migration
-        console.log("totalSupplyECOx before migration", totalSupplyECOx);
-        console.log("totalSupplySECOx before migration", totalSupplySECOx);
+        // Check that migration contract's new token balance equals initial supply minus migrated amounts
+        uint256 expectedRemainingSupply = totalSupply - (totalSupplyECOx + totalSupplySECOx);
+        assertEq(token.balanceOf(address(migrationContract)), expectedRemainingSupply, "Migration contract should have correct remaining balance");
+        console.log("Migration contract remaining balance", expectedRemainingSupply);
+
+        uint256 ecoxBurnedTotal=1000000000000000000000000000-998366082182504042918163346;
+        
+        assertEq(excludedECOx, token.balanceOf(address(migrationContract))-ecoxBurnedTotal, "ECOx supply in excluded contracts should equal the total supply of ecox in the migration contract");
 
         vm.stopPrank();
     }
