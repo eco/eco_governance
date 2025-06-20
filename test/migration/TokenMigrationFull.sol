@@ -461,6 +461,19 @@ contract TokenMigrationProposalTest is Test {
         
         assertEq(excludedECOx, token.balanceOf(address(migrationContract))-ecoxBurnedTotal, "ECOx supply in excluded contracts should equal the total supply of ecox in the migration contract");
 
+        // Final sweep - transfer remaining tokens to policy
+        uint256 migrationContractBalanceBeforeSweep = token.balanceOf(address(migrationContract));
+        uint256 policyBalanceBeforeSweep = token.balanceOf(address(policy));
+        
+        migrationContract.sweep(address(policy));
+        
+        // Verify migration contract has no tokens left
+        assertEq(token.balanceOf(address(migrationContract)), 0, "Migration contract should have no tokens after sweep");
+        
+        // Verify policy received the swept tokens
+        uint256 policyBalanceAfterSweep = token.balanceOf(address(policy));
+        assertEq(policyBalanceAfterSweep, policyBalanceBeforeSweep + migrationContractBalanceBeforeSweep, "Policy should receive all remaining tokens from sweep");
+        
         vm.stopPrank();
     }
 } 
