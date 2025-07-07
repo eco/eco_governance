@@ -8,7 +8,7 @@ import {UnsafeUpgrades as Upgrades} from "openzeppelin-foundry-upgrades/Upgrades
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 // Local contracts
-import {Token} from "src/tokens/Token.sol";
+import {Token} from "src/Token.sol";
 import {TokenMigrationContract} from "src/migration/TokenMigrationContract.sol";
 import {TokenMigrationProposal} from "src/migration/TokenMigrationProposal.sol";
 import {ECOxStakingBurnable} from "src/migration/upgrades/ECOxStakingBurnable.sol";
