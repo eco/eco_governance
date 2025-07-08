@@ -135,23 +135,8 @@ contract TokenMigrationContract is AccessControl {
      * @param account The account to migrate tokens for
      */
     function _migrate(address account) internal {
-        // Get balances
-        uint256 ecoxBalance = ecox.balanceOf(account);
-        uint256 secoxBalance = secox.balanceOf(account);
+        uint256 totalBalance = _migrationBurn(account);
 
-        // Burn ECOx if they have any
-        if (ecoxBalance > 0) {
-            ecox.burn(account, ecoxBalance);
-        }
-
-        // Burn sECOx if they have any
-        // TODO: upgrade sECOx
-        if (secoxBalance > 0) {
-            secox.burn(account, secoxBalance);
-        }
-
-        // Mint new tokens - sum of both balances
-        uint256 totalBalance = ecoxBalance + secoxBalance;
         if (totalBalance > 0) {
             newToken.pausedTransfer(account, totalBalance); // paused transfer because it will be preminted
             emit Migrated(account, totalBalance);
@@ -159,23 +144,7 @@ contract TokenMigrationContract is AccessControl {
     }
 
     function _migrateLockup(address account) internal {
-        // Get balances
-        uint256 ecoxBalance = ecox.balanceOf(account);
-        uint256 secoxBalance = secox.balanceOf(account);
-
-        // Burn ECOx if they have any
-        if (ecoxBalance > 0) {
-            ecox.burn(account, ecoxBalance);
-        }
-
-        // Burn sECOx if they have any
-        // TODO: upgrade sECOx
-        if (secoxBalance > 0) {
-            secox.burn(account, secoxBalance);
-        }
-
-        // Mint new tokens - sum of both balances
-        uint256 totalBalance = ecoxBalance + secoxBalance;
+        uint256 totalBalance = _migrationBurn(account);
 
         //get beneficiary
         address beneficiary = ILockupContract(account).beneficiary();
@@ -184,6 +153,49 @@ contract TokenMigrationContract is AccessControl {
             newToken.pausedTransfer(beneficiary, totalBalance); // paused transfer because it will be preminted
             emit Migrated(account, totalBalance);
         }
+    }
+
+    function migrateSpecialCase(address _oldLockup, address _newLockup) external onlyRole(MIGRATOR_ROLE) {
+        ecox.unpause();
+        uint256 totalBalance = _migrationBurn(_oldLockup);
+        address beneficiary = ILockupContract(_oldLockup).beneficiary();
+
+        if(_oldLockup == 0xF003A542cCD8e37c836AFF3b7Fab528eF82285A6) {
+            // 176k anchorage lockup
+            address SAFTSafe = 0xED83D2f20cF2d218Adbe0a239C0F8AbDca8Fc499;
+            // transfer to SAFT for later reissue
+            newToken.pausedTransfer(SAFTSafe, totalBalance);
+        } else if(_oldLockup == 0x35FDFe53b3817dde163dA82deF4F586450EDf893 || _oldLockup == 0x4923438A972Fe8bDf1994B276525d89F5DE654c9) {
+            // 18mm or 2mm investor lockup
+            require(ILockupContract(_newLockup).beneficiary() == beneficiary, 'lockup mismatch');
+            // transfer to new OZ lockup
+            newToken.pausedTransfer(_newLockup, totalBalance);
+        } else {
+            revert();
+        }
+        emit Migrated(_oldLockup, totalBalance);
+        ecox.pause();
+    }
+
+    function _migrationBurn(address account) private returns (uint256){
+                // Get balances
+        uint256 ecoxBalance = ecox.balanceOf(account);
+        uint256 secoxBalance = secox.balanceOf(account);
+
+        // Burn ECOx if they have any
+        if (ecoxBalance > 0) {
+            ecox.burn(account, ecoxBalance);
+        }
+
+        // Burn sECOx if they have any
+        // TODO: upgrade sECOx
+        if (secoxBalance > 0) {
+            secox.burn(account, secoxBalance);
+        }
+
+        // Mint new tokens - sum of both balances
+        uint256 totalBalance = ecoxBalance + secoxBalance;
+        return totalBalance;
     }
 
     /**
