@@ -13,3 +13,4 @@ lib/currency-1.5/:@openzeppelin/=lib/currency-1.5/node_modules/@openzeppelin/
 lib/currency-1.5/:@helix-foundation/=lib/currency-1.5/node_modules/@helix-foundation/
 @openzeppelin/contracts/=lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/
 @openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/
+@openzeppelin-foundry-upgrades/=lib/openzeppelin-foundry-upgrades/src/

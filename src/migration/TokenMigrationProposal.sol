@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 import {Proposal} from "currency-1.5/governance/community/proposals/Proposal.sol";
 import {ECOx} from "currency-1.5/currency/ECOx.sol";
 import {ECOxStaking} from "currency-1.5/governance/community/ECOxStaking.sol";
-import {Token} from "src/tokens/Token.sol";
+import {Token} from "src/Token.sol";
 import {TokenMigrationContract} from "./TokenMigrationContract.sol";
 import {IL1CrossDomainMessenger} from "@eth-optimism/contracts/L1/messaging/IL1CrossDomainMessenger.sol";
 import {ECOxStakingBurnable} from "./upgrades/ECOxStakingBurnable.sol";
@@ -104,11 +104,11 @@ contract TokenMigrationProposal is Proposal {
         ECOxStakingBurnable(address(secox)).setBurner(address(migrationContract), true);
 
         // OPTIMISM //
-        // need to upgrade the bridge implimentations
+        // need to upgrade the bridge implementations
         l1ECOBridge.upgradeL2Bridge(l2ECOBridgeUpgrade, l2gas);
         l1ECOBridge.upgradeSelf(l1ECOBridgeUpgrade);
 
-        // need to upgrade the ecox implimentations
+        // need to upgrade the ecox implementations
         l1ECOBridge.upgradeECOx(l2ECOxFreeze, l2gas);
 
         // set new static
