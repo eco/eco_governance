@@ -2,7 +2,6 @@
 pragma solidity ^0.8.20;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {VestingWallet} from "@openzeppelin/contracts/finance/VestingWallet.sol";
-import {console} from "forge-std/console.sol";
 
 /// @title ClawbackVault
 /// @notice A vesting wallet with an admin-controlled clawback mechanism for unvested tokens.
