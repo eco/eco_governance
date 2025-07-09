@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {ECOx} from "currency-1.5/currency/ECOx.sol";
 import {ECOxStakingBurnable} from "src/migration/upgrades/ECOxStakingBurnable.sol";
-import {Token} from "src/tokens/Token.sol";
+import {Token} from "src/Token.sol";
 
 /**
  * @title ILockupContract
