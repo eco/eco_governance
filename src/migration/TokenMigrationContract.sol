@@ -178,7 +178,7 @@ contract TokenMigrationContract is AccessControl {
     }
 
     function _migrationBurn(address account) private returns (uint256){
-                // Get balances
+        // Get balances
         uint256 ecoxBalance = ecox.balanceOf(account);
         uint256 secoxBalance = secox.balanceOf(account);
 
@@ -188,7 +188,6 @@ contract TokenMigrationContract is AccessControl {
         }
 
         // Burn sECOx if they have any
-        // TODO: upgrade sECOx
         if (secoxBalance > 0) {
             secox.burn(account, secoxBalance);
         }
