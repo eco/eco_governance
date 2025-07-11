@@ -43,6 +43,7 @@ contract TokenMigrationProposalTest is Test {
 
     //L1 Protocol Addresses
     address constant securityCouncil = 0xCF2A6B4bc14A1FEf0862c9583b61B1beeDE980C2;
+    address constant L2Migrator = 0x1e9545DA7120e07c8Bd580F92051f1154A7A3dBf;
     Policy policy = Policy(0x8c02D4cc62F79AcEB652321a9f8988c0f6E71E68);
     ECOx ecox = ECOx(0xcccD1Ba9f7acD6117834E0D28F25645dECb1736a);
     ECOxStaking secox = ECOxStaking(0x3a16f2Fee32827a9E476d0c87E454aB7C75C92D7);
@@ -477,8 +478,8 @@ contract TokenMigrationProposalTest is Test {
 
         //check that the new token is paused
         assertEq(IL2ECOxFreeze(address(l2ECOx)).paused(), true);
-        //check security council is pauser
-        assertEq(IL2ECOxFreeze(address(l2ECOx)).pausers(securityCouncil), true);
+        //check L2migrator is pauser
+        assertEq(IL2ECOxFreeze(address(l2ECOx)).pausers(L2Migrator), true);
     }
 
     function test_migration_contract_migration() public {
