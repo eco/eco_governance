@@ -20,7 +20,7 @@ contract DeployTokenMigration is Script {
     function run() public {
         // --- 1. Load constructor arguments from environment ---
         ECOx ecox = ECOx(vm.envAddress("ECOX"));
-        ECOxStaking secox = ECOxStaking(vm.envAddress("SECOX"));
+        address secox = vm.envAddress("SECOX");
         Token newToken = Token(vm.envAddress("NEW_TOKEN"));
         address admin = vm.envAddress("ADMIN");
 
@@ -41,7 +41,7 @@ contract DeployTokenMigration is Script {
         vm.startBroadcast();
         TokenMigrationContract migrationContract = new TokenMigrationContract(
             ecox,
-            ECOxStakingBurnable(secoxBurnable),
+            ECOxStakingBurnable(secox),
             newToken,
             admin
         );
@@ -50,7 +50,7 @@ contract DeployTokenMigration is Script {
         // --- 3. Deploy TokenMigrationProposal ---
         TokenMigrationProposal proposal = new TokenMigrationProposal(
             ecox,
-            secox,
+            ECOxStaking(secox),
             newToken,
             TokenMigrationContract(address(migrationContract)),
             l1Messenger,
