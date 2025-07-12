@@ -478,7 +478,7 @@ contract TokenMigrationProposalTest is Test {
         //check that the new token is paused
         assertEq(IL2ECOxFreeze(address(l2ECOx)).paused(), true);
         //check L2migrator is pauser
-        assertEq(IL2ECOxFreeze(address(l2ECOx)).pausers(L2Migrator), true);
+        assertEq(IL2ECOxFreeze(address(l2ECOx)).pausers(migrationOwnerOP), true);
     }
 
     function test_migration_contract_migration() public {
