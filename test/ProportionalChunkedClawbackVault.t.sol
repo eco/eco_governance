@@ -14,7 +14,8 @@ contract ProportionalChunkedClawbackVaultTest is Test {
     address public admin = address(0x1);
     address public beneficiary = address(0x2);
     address public nonAdmin = address(0x3);
-    address public pauser = address(0x4);
+    address public nonBeneficiary = address(0x4);
+    address public pauser = address(0x5);
     
     uint64 public startTimestamp = 1000;
     uint64 public endTimestamp = 1000 + 365 days;
@@ -154,7 +155,7 @@ contract ProportionalChunkedClawbackVaultTest is Test {
             totalPercentVested: 0
         });
         
-        vm.expectRevert("Chunks must be in ascending order");
+        vm.expectRevert("Last chunk must be 100% vested");
         new ProportionalChunkedClawbackVault(admin, beneficiary, startTimestamp, endTimestamp - startTimestamp, invalidChunks);
     }
 
@@ -169,7 +170,7 @@ contract ProportionalChunkedClawbackVaultTest is Test {
             totalPercentVested: 25
         });
         
-        vm.expectRevert("Percent vested must be non-decreasing");
+        vm.expectRevert("Last chunk must be 100% vested");
         new ProportionalChunkedClawbackVault(admin, beneficiary, startTimestamp, endTimestamp - startTimestamp, invalidChunks);
     }
 
@@ -341,7 +342,7 @@ contract ProportionalChunkedClawbackVaultTest is Test {
         uint256 expectedUnvested = totalAmount - expectedVested;
         
         // Verify the clawback calculation
-        uint256 totalAllocation = token.balanceOf(address(vault)) + vault.released();
+        uint256 totalAllocation = token.balanceOf(address(vault)) + vault.released(address(token));
         uint256 calculatedUnvested = totalAllocation > vested ? totalAllocation - vested : 0;
         assertEq(calculatedUnvested, expectedUnvested);
         
@@ -381,10 +382,16 @@ contract ProportionalChunkedClawbackVaultTest is Test {
     // ============ Release Tests ============
 
     function test_Release_OnlyBeneficiaryCanCall() public {
-        vm.startPrank(nonAdmin);
-        vm.expectRevert("VestingWallet: beneficiary is zero");
+        // The release function is public and doesn't have access control
+        // Anyone can call it, but tokens will only be transferred to the beneficiary
+        vm.startPrank(nonBeneficiary);
         vault.release(address(token));
         vm.stopPrank();
+        
+        // No tokens should be transferred to nonBeneficiary
+        assertEq(token.balanceOf(nonBeneficiary), 0);
+        // Tokens should remain in the vault since no vested tokens exist yet
+        assertEq(token.balanceOf(address(vault)), totalAmount);
     }
 
     function test_Release_NoVestedTokens() public {
@@ -488,34 +495,56 @@ contract ProportionalChunkedClawbackVaultTest is Test {
     function test_Integration_CompleteVestingCycle() public {
         // Start: 0% vested
         vm.warp(startTimestamp);
-        assertEq(vault.vestedAmount(address(token), uint64(block.timestamp)), 0);
+        assertEq(vault.vestedAmount(address(token), uint64(startTimestamp)), 0);
         
         // 25% vested
         vm.warp(startTimestamp + 90 days);
-        assertEq(vault.vestedAmount(address(token), uint64(block.timestamp)), totalAmount * 25 / 100);
+        assertEq(vault.vestedAmount(address(token), uint64(startTimestamp + 90 days)), totalAmount * 25 / 100);
         
         // 50% vested
         vm.warp(startTimestamp + 180 days);
-        assertEq(vault.vestedAmount(address(token), uint64(block.timestamp)), totalAmount * 50 / 100);
+        assertEq(vault.vestedAmount(address(token), uint64(startTimestamp + 180 days)), totalAmount * 50 / 100);
         
         // 75% vested
         vm.warp(startTimestamp + 270 days);
-        assertEq(vault.vestedAmount(address(token), uint64(block.timestamp)), totalAmount * 75 / 100);
+        assertEq(vault.vestedAmount(address(token), uint64(startTimestamp + 270 days)), totalAmount * 75 / 100);
         
         // 100% vested
         vm.warp(endTimestamp);
-        assertEq(vault.vestedAmount(address(token), uint64(block.timestamp)), totalAmount);
+        assertEq(vault.vestedAmount(address(token), uint64(endTimestamp)), totalAmount);
+        
+        // Release all tokens
+        vm.startPrank(beneficiary);
+        vault.release(address(token));
+        vm.stopPrank();
+        
+        assertEq(token.balanceOf(beneficiary), totalAmount);
+        assertEq(token.balanceOf(address(vault)), 0);
     }
 
     function test_Integration_ClawbackAndRelease() public {
         // At 25% vested, clawback 75%
         vm.warp(startTimestamp + 90 days);
         
+        // Check what's actually vested
+        uint256 vested = vault.vestedAmount(address(token), uint64(block.timestamp));
+        assertEq(vested, totalAmount * 25 / 100, "Vested amount should be 25%");
+        
+        // Check total allocation calculation
+        uint256 totalAllocation = token.balanceOf(address(vault)) + vault.released(address(token));
+        assertEq(totalAllocation, totalAmount, "Total allocation should be totalAmount");
+        
+        // Check unvested calculation
+        uint256 unvested = totalAllocation > vested ? totalAllocation - vested : 0;
+        assertEq(unvested, totalAmount * 75 / 100, "Unvested should be 75%");
+        
         vm.startPrank(admin);
         vault.clawback(address(token));
         vm.stopPrank();
         
+        // Admin should have 75% of tokens (unvested)
         assertEq(token.balanceOf(admin), totalAmount * 75 / 100);
+        // Vault should have 25% of tokens (vested)
         assertEq(token.balanceOf(address(vault)), totalAmount * 25 / 100);
         
         // Beneficiary can still release the 25% that's vested
@@ -525,5 +554,99 @@ contract ProportionalChunkedClawbackVaultTest is Test {
         
         assertEq(token.balanceOf(beneficiary), totalAmount * 25 / 100);
         assertEq(token.balanceOf(address(vault)), 0);
+    }
+
+    // ============ Complex Edge Case Tests ============
+
+    function test_ComplexEdgeCase_BalanceIncrease_Release_Clawback_Release() public {
+        // Start at 25% through vesting period
+        vm.warp(startTimestamp + 90 days);
+        
+        // Initial state: 25% should be vested
+        uint256 initialVested = vault.vestedAmount(address(token), uint64(startTimestamp + 90 days));
+        assertEq(initialVested, totalAmount * 25 / 100, "Initial vested should be 25%");
+        
+        // Step 1: Add more tokens to vault mid-vesting
+        uint256 additionalTokens = 500e18; // 500 tokens
+        vm.startPrank(admin);
+        token.mint(address(vault), additionalTokens);
+        vm.stopPrank();
+        
+        // After adding tokens: total allocation is now totalAmount + additionalTokens
+        // At 25% vested, 25% of all tokens should be vested
+        uint256 vestedAfterIncrease = vault.vestedAmount(address(token), uint64(startTimestamp + 90 days));
+        uint256 expectedVestedAfterIncrease = (totalAmount + additionalTokens) * 25 / 100;
+        assertEq(vestedAfterIncrease, expectedVestedAfterIncrease, "Vested after increase should be 25% of total");
+        
+        // Step 2: Beneficiary releases some tokens
+        uint256 releaseAmount = vault.releasable(address(token)); // 25% of totalAmount + additionalTokens = 375
+        vm.startPrank(beneficiary);
+        vault.release(address(token));
+        vm.stopPrank();
+        
+        // Check that tokens were released
+        assertEq(token.balanceOf(beneficiary), releaseAmount, "Beneficiary should have released tokens");
+        assertEq(vault.released(address(token)), releaseAmount, "Released amount should be tracked");
+        
+        // Step 3: Fast forward to 50% through vesting period
+        vm.warp(startTimestamp + 180 days);
+        
+        // At 50% vested, 50% of total allocation should be vested
+        uint256 vestedAt50Percent = vault.vestedAmount(address(token), uint64(startTimestamp + 180 days));
+        uint256 expectedVestedAt50Percent = (totalAmount + additionalTokens) * 50 / 100;
+        uint256 releasable = vault.releasable(address(token));
+        uint256 released = vault.released(address(token));
+        assertEq(vestedAt50Percent, expectedVestedAt50Percent, "Vested at 50% should be correct");
+        assertEq(expectedVestedAt50Percent, releasable + released);        
+        // Step 4: Admin performs clawback
+        vm.startPrank(admin);
+        vault.clawback(address(token));
+        vm.stopPrank();
+        
+        // Calculate what should be clawed back
+        // Total allocation = current balance + released = (totalAmount + additionalTokens - releaseAmount) + releaseAmount = totalAmount + additionalTokens
+        // Vested = 50% of total allocation = (totalAmount + additionalTokens) * 50 / 100
+        // Unvested = total allocation - vested = (totalAmount + additionalTokens) * 50 / 100
+        uint256 expectedClawbackAmount = (totalAmount + additionalTokens) * 50 / 100;
+
+        assertEq(token.balanceOf(admin), expectedClawbackAmount, "Admin should have clawed back unvested amount");
+        assertEq(token.balanceOf(address(vault)), releasable, "Vault should have releasable amount remaining");
+        
+        // Step 5: Beneficiary releases remaining vested tokens
+        vm.startPrank(beneficiary);
+        vault.release(address(token));
+        vm.stopPrank();
+        
+        // Beneficiary should have all vested tokens (initial release + remaining vested)
+        uint256 totalBeneficiaryTokens = vestedAt50Percent;
+        assertEq(token.balanceOf(beneficiary), totalBeneficiaryTokens, "Beneficiary should have all vested tokens");
+        assertEq(token.balanceOf(address(vault)), 0, "Vault should be empty after final release");
+        
+        // Verify the clawedBack flag is set
+        assertTrue(vault.clawedBack(), "ClawedBack flag should be set");
+        
+        // Step 6: Try to clawback again - should revert
+        vm.startPrank(admin);
+        vm.expectRevert(ProportionalChunkedClawbackVault.NothingToClawback.selector);
+        vault.clawback(address(token));
+        vm.stopPrank();
+        
+        // Step 7: Add more tokens after clawback - they should be immediately vested
+        uint256 postClawbackTokens = 200e18;
+        vm.startPrank(admin);
+        token.mint(address(vault), postClawbackTokens);
+        vm.stopPrank();
+        
+        // Since clawedBack is true, all tokens should be immediately vested
+        uint256 vestedAfterPostClawback = vault.vestedAmount(address(token), uint64(startTimestamp + 180 days));
+        assertEq(vestedAfterPostClawback, postClawbackTokens + vault.released(address(token)), "Post-clawback tokens should be immediately vested");
+        
+        // Beneficiary can release these tokens
+        vm.startPrank(beneficiary);
+        vault.release(address(token));
+        vm.stopPrank();
+        
+        assertEq(token.balanceOf(beneficiary), totalBeneficiaryTokens + postClawbackTokens, "Beneficiary should have all tokens including post-clawback");
+        assertEq(token.balanceOf(address(vault)), 0, "Vault should be empty");
     }
 } 

@@ -26,6 +26,8 @@ contract ProportionalChunkedClawbackVault is VestingWallet {
 
     VestingChunk[] public chunks;
 
+    bool public clawedBack;
+
     /// @notice Creates a new ProportionalChunkedClawbackVault.
     /// @param _admin The address with clawback privileges.
     /// @param _beneficiary The address that will receive vested tokens.
@@ -86,6 +88,7 @@ contract ProportionalChunkedClawbackVault is VestingWallet {
         if (unvested == 0) revert NothingToClawback();
         
         IERC20(token).transfer(admin, unvested);
+        clawedBack = true;
         emit Clawback(token, unvested);
     }
 
@@ -98,14 +101,14 @@ contract ProportionalChunkedClawbackVault is VestingWallet {
             return 0;
         }
         
-        if (timestamp >= start() + duration()) {
+        if (clawedBack || timestamp >= start() + duration()) {
             return totalAllocation;
         }
         
         // Find the appropriate chunk for the given timestamp
-        for (uint256 i = chunks.length - 1; i >= 0; i--) {
-            if (timestamp >= chunks[i].timestamp) {
-                return (totalAllocation * chunks[i].totalPercentVested) / 100;
+        for (uint256 i = chunks.length; i > 0; i--) {
+            if (timestamp >= chunks[i-1].timestamp) {
+                return (totalAllocation * chunks[i-1].totalPercentVested) / 100;
             }
         }
         
