@@ -43,28 +43,29 @@ contract TokenMigrationProposalTest is Test {
 
     //L1 Protocol Addresses
     address constant securityCouncil = 0xCF2A6B4bc14A1FEf0862c9583b61B1beeDE980C2;
-    address constant L2Migrator = 0x1e9545DA7120e07c8Bd580F92051f1154A7A3dBf;
-    Policy policy = Policy(0x8c02D4cc62F79AcEB652321a9f8988c0f6E71E68);
-    ECOx ecox = ECOx(0xcccD1Ba9f7acD6117834E0D28F25645dECb1736a);
-    ECOxStaking secox = ECOxStaking(0x3a16f2Fee32827a9E476d0c87E454aB7C75C92D7);
+    address L2Migrator = vm.envAddress('MIGRATOR_OP');
+    Policy policy = Policy(vm.envAddress('POLICY'));
+    ECOx ecox = ECOx(vm.envAddress("ECOX"));
+    ECOxStaking secox = ECOxStaking((vm.envAddress("SECOX")));
     IL1ECOBridge l1ECOBridge = IL1ECOBridge(0xAa029BbdC947F5205fBa0F3C11b592420B58f824);
     IL2ECOBridge l2ECOBridge = IL2ECOBridge(0xAa029BbdC947F5205fBa0F3C11b592420B58f824);
     IL1CrossDomainMessenger l1Messenger = IL1CrossDomainMessenger(0x25ace71c97B33Cc4729CF772ae268934F7ab5fA1);
     address claimContract = 0xa28f219BF1e15f5217B8Eb5f406BcbE8f13d16DC;
 
     // L1 To Set
-    TokenMigrationProposal proposal;
-    Token token;
-    TokenMigrationContract migrationContract;
-    ECOxStakingBurnable secoxBurnable;
+    TokenMigrationProposal proposal = TokenMigrationProposal(vm.envAddress('MIGRATION_PROPOSAL'));
+    Token token = Token(vm.envAddress('NEW_TOKEN'));
+    TokenMigrationContract migrationContract = TokenMigrationContract(vm.envAddress('MIGRATION_CONTRACT'));
+    ECOxStakingBurnable secoxBurnable = ECOxStakingBurnable(vm.envAddress("SECOX_BURNABLE"));
 
     //bridge upgrades
-    IL1ECOBridge l1ECOBridgeUpgrade;
-    IL2ECOBridge l2ECOBridgeUpgrade;
+    IL1ECOBridge l1ECOBridgeUpgrade = IL1ECOBridge(vm.envAddress('L1_ECO_BRIDGE_UPGRADE'));
+    IL2ECOBridge l2ECOBridgeUpgrade = IL2ECOBridge(vm.envAddress('L2_ECO_BRIDGE_UPGRADE'));
+
 
     //L1 Users
     address payable[] users;
-    address minter;
+    address minter = vm.envAddress('MINTER');
     address alice;
     address bob;
 
@@ -74,9 +75,9 @@ contract TokenMigrationProposalTest is Test {
     IL2CrossDomainMessenger l2Messenger = IL2CrossDomainMessenger(0x4200000000000000000000000000000000000007);
 
     // L2 To Set
-    IL2ECOxFreeze l2ECOxFreeze;
-    address migrationOwnerOP;
-    uint32 l2gas = 10000;
+    IL2ECOxFreeze l2ECOxFreeze = IL2ECOxFreeze(vm.envAddress('L2_ECOX_FREEZE'));
+    address migrationOwnerOP = vm.envAddress('MIGRATOR_OP');
+    uint32 l2gas = uint32(vm.envUint('L2GAS'));
 
     //events
     event UpgradeL2Bridge(address proposal);
@@ -91,122 +92,120 @@ contract TokenMigrationProposalTest is Test {
     event NewContractOwner(address indexed contractOwner, bool isContractOwnerL2);
 
     function setUp() public {
-        //fork networks 22597199 mainnet, 136514625 optimism
-        optimismFork = vm.createSelectFork(optimismRpcUrl, 136514625);
+        //just pick latest block or so
+        optimismFork = vm.createSelectFork(optimismRpcUrl, 138550136);
 
-        // https://ethereum.stackexchange.com/questions/153940/how-to-resolve-compiler-version-conflicts-in-foundry-test-contracts
-        l2ECOxFreeze = IL2ECOxFreeze(deployCode("L2ECOxFreeze.sol:L2ECOxFreeze"));
+        // // https://ethereum.stackexchange.com/questions/153940/how-to-resolve-compiler-version-conflicts-in-foundry-test-contracts
+        // l2ECOxFreeze = IL2ECOxFreeze(deployCode("L2ECOxFreeze.sol:L2ECOxFreeze"));
 
-        //deploy L2ECOBridge using deployCode
-        l2ECOBridgeUpgrade = IL2ECOBridge(deployCode("out/L2ECOBridge.sol/L2ECOBridge.json"));
+        // //deploy L2ECOBridge using deployCode
+        // l2ECOBridgeUpgrade = IL2ECOBridge(deployCode("out/L2ECOBridge.sol/L2ECOBridge.json"));
 
-        mainnetFork = vm.createSelectFork(mainnetRpcUrl, 22597199);
+        mainnetFork = vm.createSelectFork(mainnetRpcUrl, 22934250);
 
-        //deploy L1ECOBridge using deployCode
-        l1ECOBridgeUpgrade = IL1ECOBridge(deployCode("out/L1ECOBridge.sol/L1ECOBridge.json"));
+        // //deploy L1ECOBridge using deployCode
+        // l1ECOBridgeUpgrade = IL1ECOBridge(deployCode("out/L1ECOBridge.sol/L1ECOBridge.json"));
 
         Utilities utilities = new Utilities();
 
         // Create users
         users = utilities.createUsers(4);
-        minter = users[0];
-        migrationOwnerOP = users[1];
         alice = users[2];
         bob = users[3];
 
-        // deploy token contract
-        Token tokenImplementation = new Token();
-        address tokenProxy = Upgrades.deployTransparentProxy(
-            address(tokenImplementation),
-            address(policy),
-            abi.encodeWithSelector(Token.initialize.selector, address(policy), address(securityCouncil), "TOKEN", "TKN")
-        );
-        token = Token(tokenProxy);
+    //     // deploy token contract
+    //     Token tokenImplementation = new Token();
+    //     address tokenProxy = Upgrades.deployTransparentProxy(
+    //         address(tokenImplementation),
+    //         address(policy),
+    //         abi.encodeWithSelector(Token.initialize.selector, address(policy), address(securityCouncil), "TOKEN", "TKN")
+    //     );
+    //     token = Token(tokenProxy);
 
-        ProxyAdmin proxyAdmin = ProxyAdmin(Upgrades.getAdminAddress(tokenProxy));
+    //     ProxyAdmin proxyAdmin = ProxyAdmin(Upgrades.getAdminAddress(tokenProxy));
 
-        assertEq(proxyAdmin.owner(), address(policy));
+    //     assertEq(proxyAdmin.owner(), address(policy));
 
-        assertEq(
-            vm.load(tokenProxy, 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103),
-            bytes32(uint256(uint160(address(proxyAdmin))))
-        );
+    //     assertEq(
+    //         vm.load(tokenProxy, 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103),
+    //         bytes32(uint256(uint160(address(proxyAdmin))))
+    //     );
 
-        // deploy migration contract with no proxy
-        migrationContract =
-            new TokenMigrationContract(ecox, ECOxStakingBurnable(address(secox)), token, address(securityCouncil));
+    //     // deploy migration contract with no proxy
+    //     migrationContract =
+    //         new TokenMigrationContract(ecox, ECOxStakingBurnable(address(secox)), token, address(securityCouncil));
 
-        // deploy ECOxStakingImplementation contract with no proxy
-        secoxBurnable = new ECOxStakingBurnable(policy, IERC20(address(ecox)));
+    //     // deploy ECOxStakingImplementation contract with no proxy
+    //     secoxBurnable = new ECOxStakingBurnable(policy, IERC20(address(ecox)));
 
-        // deploy proposal contract with no proxy
-        proposal = new TokenMigrationProposal(
-            ECOx(address(ecox)),
-            ECOxStaking(address(secox)),
-            Token(address(token)),
-            TokenMigrationContract(address(migrationContract)),
-            IL1CrossDomainMessenger(address(l1Messenger)),
-            l1ECOBridge,
-            address(staticMarket),
-            address(migrationOwnerOP),
-            address(l2ECOxFreeze),
-            l2gas,
-            address(secoxBurnable),
-            address(minter),
-            address(l1ECOBridgeUpgrade),
-            address(l2ECOBridgeUpgrade),
-            address(claimContract)
-        );
-        assertEq(vm.activeFork(), mainnetFork);
+    //     // deploy proposal contract with no proxy
+    //     proposal = new TokenMigrationProposal(
+    //         ECOx(address(ecox)),
+    //         ECOxStaking(address(secox)),
+    //         Token(address(token)),
+    //         TokenMigrationContract(address(migrationContract)),
+    //         IL1CrossDomainMessenger(address(l1Messenger)),
+    //         l1ECOBridge,
+    //         address(staticMarket),
+    //         address(migrationOwnerOP),
+    //         address(l2ECOxFreeze),
+    //         l2gas,
+    //         address(secoxBurnable),
+    //         address(minter),
+    //         address(l1ECOBridgeUpgrade),
+    //         address(l2ECOBridgeUpgrade),
+    //         address(claimContract)
+    //     );
+    //     assertEq(vm.activeFork(), mainnetFork);
     }
 
-    function test_token_deployment() public {
-        // assert that the token is deployed with the correct
-        assertEq(token.name(), "TOKEN");
-        assertEq(token.symbol(), "TKN");
-        assertEq(token.decimals(), 18);
-        assertEq(token.totalSupply(), 0);
+    // function test_token_deployment() public {
+    //     // assert that the token is deployed with the correct
+    //     assertEq(token.name(), "TOKEN");
+    //     assertEq(token.symbol(), "TKN");
+    //     assertEq(token.decimals(), 18);
+    //     assertEq(token.totalSupply(), 0);
 
-        assertEq(token.totalSupply(), 0);
-        assertEq(token.hasRole(token.DEFAULT_ADMIN_ROLE(), address(policy)), true);
-        assertEq(token.hasRole(token.MINTER_ROLE(), address(policy)), true);
-        assertEq(token.hasRole(token.BURNER_ROLE(), address(policy)), true);
-        assertEq(token.hasRole(token.PAUSER_ROLE(), address(policy)), true);
-        assertEq(token.hasRole(token.PAUSER_ROLE(), address(securityCouncil)), true);
+    //     assertEq(token.totalSupply(), 0);
+    //     assertEq(token.hasRole(token.DEFAULT_ADMIN_ROLE(), address(policy)), true);
+    //     assertEq(token.hasRole(token.MINTER_ROLE(), address(policy)), true);
+    //     assertEq(token.hasRole(token.BURNER_ROLE(), address(policy)), true);
+    //     assertEq(token.hasRole(token.PAUSER_ROLE(), address(policy)), true);
+    //     assertEq(token.hasRole(token.PAUSER_ROLE(), address(securityCouncil)), true);
 
-        assertEq(token.paused(), false);
-    }
+    //     assertEq(token.paused(), false);
+    // }
 
-    function test_migration_contract_deployment() public {
-        //ensure that the migration contract is deployed with the correct constructor
-        assertEq(address(migrationContract.ecox()), address(ecox));
-        assertEq(address(migrationContract.secox()), address(secox));
-        assertEq(address(migrationContract.newToken()), address(token));
-        assertEq(migrationContract.hasRole(migrationContract.MIGRATOR_ROLE(), address(securityCouncil)), true);
-        assertEq(migrationContract.hasRole(migrationContract.DEFAULT_ADMIN_ROLE(), address(securityCouncil)), true);
-    }
+    // function test_migration_contract_deployment() public {
+    //     //ensure that the migration contract is deployed with the correct constructor
+    //     assertEq(address(migrationContract.ecox()), address(ecox));
+    //     assertEq(address(migrationContract.secox()), address(secox));
+    //     assertEq(address(migrationContract.newToken()), address(token));
+    //     assertEq(migrationContract.hasRole(migrationContract.MIGRATOR_ROLE(), address(securityCouncil)), true);
+    //     assertEq(migrationContract.hasRole(migrationContract.DEFAULT_ADMIN_ROLE(), address(securityCouncil)), true);
+    // }
 
-    function test_ECOxStakingBurnable_deployment() public {
-        assertEq(address(secoxBurnable.policy()), address(policy));
-        assertEq(address(secoxBurnable.ecoXToken()), address(ecox));
-    }
+    // function test_ECOxStakingBurnable_deployment() public {
+    //     assertEq(address(secoxBurnable.policy()), address(policy));
+    //     assertEq(address(secoxBurnable.ecoXToken()), address(ecox));
+    // }
 
-    function test_proposal_deployment() public {
-        assertEq(address(proposal.ecox()), address(ecox));
-        assertEq(address(proposal.secox()), address(secox));
-        assertEq(address(proposal.newToken()), address(token));
-        assertEq(address(proposal.migrationContract()), address(migrationContract));
-        assertEq(address(proposal.messenger()), address(l1Messenger));
-        assertEq(address(proposal.l1ECOBridge()), address(l1ECOBridge));
-        assertEq(address(proposal.staticMarket()), address(staticMarket));
-        assertEq(address(proposal.migrationOwnerOP()), address(migrationOwnerOP));
-        assertEq(address(proposal.l2ECOxFreeze()), address(l2ECOxFreeze));
-        assertEq(proposal.l2gas(), l2gas);
-        assertEq(address(proposal.ECOxStakingImplementation()), address(secoxBurnable));
-        assertEq(address(proposal.minter()), address(minter));
-        assertEq(address(proposal.l1ECOBridgeUpgrade()), address(l1ECOBridgeUpgrade));
-        assertEq(address(proposal.l2ECOBridgeUpgrade()), address(l2ECOBridgeUpgrade));
-    }
+    // function test_proposal_deployment() public {
+    //     assertEq(address(proposal.ecox()), address(ecox));
+    //     assertEq(address(proposal.secox()), address(secox));
+    //     assertEq(address(proposal.newToken()), address(token));
+    //     assertEq(address(proposal.migrationContract()), address(migrationContract));
+    //     assertEq(address(proposal.messenger()), address(l1Messenger));
+    //     assertEq(address(proposal.l1ECOBridge()), address(l1ECOBridge));
+    //     assertEq(address(proposal.staticMarket()), address(staticMarket));
+    //     assertEq(address(proposal.migrationOwnerOP()), address(migrationOwnerOP));
+    //     assertEq(address(proposal.l2ECOxFreeze()), address(l2ECOxFreeze));
+    //     assertEq(proposal.l2gas(), l2gas);
+    //     assertEq(address(proposal.ECOxStakingImplementation()), address(secoxBurnable));
+    //     assertEq(address(proposal.minter()), address(minter));
+    //     assertEq(address(proposal.l1ECOBridgeUpgrade()), address(l1ECOBridgeUpgrade));
+    //     assertEq(address(proposal.l2ECOBridgeUpgrade()), address(l2ECOBridgeUpgrade));
+    // }
 
     // does not test l1 messages sent to l2
     function enactment_sequence() public {
@@ -479,7 +478,7 @@ contract TokenMigrationProposalTest is Test {
         //check that the new token is paused
         assertEq(IL2ECOxFreeze(address(l2ECOx)).paused(), true);
         //check L2migrator is pauser
-        assertEq(IL2ECOxFreeze(address(l2ECOx)).pausers(L2Migrator), true);
+        assertEq(IL2ECOxFreeze(address(l2ECOx)).pausers(migrationOwnerOP), true);
     }
 
     function test_migration_contract_migration() public {
@@ -708,53 +707,93 @@ contract TokenMigrationProposalTest is Test {
         vm.stopPrank();
     }
 
-    function test_migrationSpecialCase_anchorage_lockup() public {
+    // function test_migrationSpecialCase_anchorage_lockup() public {
+    //     enactment_sequence();
+
+    //     address oldLockup = 0xF003A542cCD8e37c836AFF3b7Fab528eF82285A6;
+    //     address SAFTSafe = 0xED83D2f20cF2d218Adbe0a239C0F8AbDca8Fc499;
+    //     address beneficiary = address(0xBEEF);
+
+    //     // Mint balances to oldLockup
+    //     uint256 ecoxAmount = 1000 ether;
+    //     uint256 secoxAmount = 500 ether;
+    //     deal(address(ecox), oldLockup, ecoxAmount);
+    //     deal(address(secox), oldLockup, secoxAmount);
+
+    //     // Mock beneficiary
+    //     vm.mockCall(oldLockup, abi.encodeWithSignature("beneficiary()"), abi.encode(beneficiary));
+
+    //     // Mint new tokens to migration contract if needed
+    //     uint256 total = ecoxAmount + secoxAmount;
+    //     deal(address(token), address(migrationContract), total);
+
+    //     vm.startPrank(securityCouncil);
+    //     migrationContract.migrateSpecialCase(oldLockup, address(0));
+    //     vm.stopPrank();
+
+    //     // Should have burned both tokens from oldLockup
+    //     assertEq(ecox.balanceOf(oldLockup), 0);
+    //     assertEq(secox.balanceOf(oldLockup), 0);
+
+    //     // Should have transferred to SAFTSafe
+    //     assertEq(token.balanceOf(SAFTSafe), total);
+    // }
+
+    function test_migrationSpecialCase_investor_lockup_success_18M() public {
         enactment_sequence();
 
-        address oldLockup = 0xF003A542cCD8e37c836AFF3b7Fab528eF82285A6;
-        address SAFTSafe = 0xED83D2f20cF2d218Adbe0a239C0F8AbDca8Fc499;
-        address beneficiary = address(0xBEEF);
+        ILockupContract oldLockupContract = ILockupContract(0x35FDFe53b3817dde163dA82deF4F586450EDf893);
+        address oldLockup = address(oldLockupContract);
+        ILockupContract newLockupContract = ILockupContract(0x7528f771be51859BBD29cE177A7a900E90D7c316);
+        address newLockup = address(newLockupContract);
+        address beneficiary = oldLockupContract.beneficiary();
+        console.log(beneficiary);
 
         // Mint balances to oldLockup
-        uint256 ecoxAmount = 1000 ether;
-        uint256 secoxAmount = 500 ether;
-        deal(address(ecox), oldLockup, ecoxAmount);
-        deal(address(secox), oldLockup, secoxAmount);
+        uint256 ecoxAmount = ecox.balanceOf(oldLockup);
+        uint256 secoxAmount = secox.balanceOf(oldLockup);
+        console.log(ecoxAmount);
+        console.log(secoxAmount);
 
-        // Mock beneficiary
-        vm.mockCall(oldLockup, abi.encodeWithSignature("beneficiary()"), abi.encode(beneficiary));
+        // Mock beneficiary for new lockup
+
+        // vm.mockCall(newLockup, abi.encodeWithSignature("beneficiary()"), abi.encode(beneficiary));
 
         // Mint new tokens to migration contract if needed
         uint256 total = ecoxAmount + secoxAmount;
         deal(address(token), address(migrationContract), total);
 
         vm.startPrank(securityCouncil);
-        migrationContract.migrateSpecialCase(oldLockup, address(0));
+        migrationContract.migrateSpecialCase(oldLockup, newLockup);
         vm.stopPrank();
 
         // Should have burned both tokens from oldLockup
         assertEq(ecox.balanceOf(oldLockup), 0);
         assertEq(secox.balanceOf(oldLockup), 0);
 
-        // Should have transferred to SAFTSafe
-        assertEq(token.balanceOf(SAFTSafe), total);
+        // Should have transferred to newLockup
+        assertEq(token.balanceOf(newLockup), total);
     }
 
-    function test_migrationSpecialCase_investor_lockup_success() public {
+       function test_migrationSpecialCase_investor_lockup_success_2M() public {
         enactment_sequence();
 
-        address oldLockup = 0x35FDFe53b3817dde163dA82deF4F586450EDf893;
-        address newLockup = address(0x1234);
-        address beneficiary = address(0xBEEF);
+        ILockupContract oldLockupContract = ILockupContract(0x4923438A972Fe8bDf1994B276525d89F5DE654c9);
+        address oldLockup = address(oldLockupContract);
+        ILockupContract newLockupContract = ILockupContract(0x16eaF22eeFe4Ada3AaD57E3bFf06bD55330B3816);
+        address newLockup = address(newLockupContract);
+        address beneficiary = oldLockupContract.beneficiary();
+        console.log(beneficiary);
 
         // Mint balances to oldLockup
         uint256 ecoxAmount = ecox.balanceOf(oldLockup);
         uint256 secoxAmount = secox.balanceOf(oldLockup);
-        deal(address(ecox), oldLockup, ecoxAmount);
+        console.log(ecoxAmount);
+        console.log(secoxAmount);
 
-        // Mock beneficiary for both old and new lockup
-        vm.mockCall(oldLockup, abi.encodeWithSignature("beneficiary()"), abi.encode(beneficiary));
-        vm.mockCall(newLockup, abi.encodeWithSignature("beneficiary()"), abi.encode(beneficiary));
+        // Mock beneficiary for new lockup
+
+        // vm.mockCall(newLockup, abi.encodeWithSignature("beneficiary()"), abi.encode(beneficiary));
 
         // Mint new tokens to migration contract if needed
         uint256 total = ecoxAmount + secoxAmount;

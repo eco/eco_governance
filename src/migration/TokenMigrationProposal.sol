@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 import {Proposal} from "currency-1.5/governance/community/proposals/Proposal.sol";
 import {ECOx} from "currency-1.5/currency/ECOx.sol";
 import {ECOxStaking} from "currency-1.5/governance/community/ECOxStaking.sol";
-import {Token} from "src/tokens/Token.sol";
+import {Token} from "src/Token.sol";
 import {TokenMigrationContract} from "./TokenMigrationContract.sol";
 import {IL1CrossDomainMessenger} from "@eth-optimism/contracts/L1/messaging/IL1CrossDomainMessenger.sol";
 import {ECOxStakingBurnable} from "./upgrades/ECOxStakingBurnable.sol";
@@ -11,11 +11,11 @@ import {IL1ECOBridge} from "src/migration/interfaces/IL1ECOBridge.sol";
 
 contract TokenMigrationProposal is Proposal {
     //L1 Addresses
-    ECOx public immutable ecox; // 0xcccD1Ba9f7acD6117834E0D28F25645dECb1736a
-    ECOxStaking public immutable secox; // 0x3a16f2Fee32827a9E476d0c87E454aB7C75C92D7
+    ECOx public immutable ecox;
+    ECOxStaking public immutable secox;
     Token public immutable newToken;
     TokenMigrationContract public immutable migrationContract;
-    IL1CrossDomainMessenger public immutable messenger; // 0x25ace71c97B33Cc4729CF772ae268934F7ab5fA1
+    IL1CrossDomainMessenger public immutable messenger;
     address public immutable ECOxStakingImplementation;
     IL1ECOBridge public immutable l1ECOBridge;
     address public immutable l1ECOBridgeUpgrade;
@@ -25,13 +25,12 @@ contract TokenMigrationProposal is Proposal {
     //L2 Addresses
     address public immutable staticMarket; // 0x6085e45604956A724556135747400e32a0D6603A
     address public immutable migrationOwnerOP;
-    address public immutable l2ECOxFreeze; // old is 0xf805B07ee64f03f0aeb963883f70D0Ac0D0fE242
+    address public immutable l2ECOxFreeze; // original L2EcoX is 0xf805B07ee64f03f0aeb963883f70D0Ac0D0fE242
 
     //Other
     uint32 public immutable l2gas;
     address public immutable minter;
 
-    // a reference proposal : https://etherscan.io/address/0x80CC5F92F93F5227b7057828e223Fc5BAD71b2E7#code
 
     constructor(
         ECOx _ecox,
@@ -79,7 +78,7 @@ contract TokenMigrationProposal is Proposal {
      * A URL where more details can be found.
      */
     function url() public pure override returns (string memory) {
-        return "https://forum.eco.com/t/the-next-eco-era-trustee-payouts-fix/404"; // TODO: add url
+        return "https://forum.eco.com/t/the-next-eco-era-token-migration-part-2/440";
     }
 
     function enacted(address _self) public virtual override {
@@ -104,11 +103,11 @@ contract TokenMigrationProposal is Proposal {
         ECOxStakingBurnable(address(secox)).setBurner(address(migrationContract), true);
 
         // OPTIMISM //
-        // need to upgrade the bridge implimentations
+        // need to upgrade the bridge implementations
         l1ECOBridge.upgradeL2Bridge(l2ECOBridgeUpgrade, l2gas);
         l1ECOBridge.upgradeSelf(l1ECOBridgeUpgrade);
 
-        // need to upgrade the ecox implimentations
+        // need to upgrade the ecox implementations
         l1ECOBridge.upgradeECOx(l2ECOxFreeze, l2gas);
 
         // set new static
