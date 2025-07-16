@@ -125,7 +125,7 @@ contract ProportionalChunkedClawbackVaultTest is Test {
 
     function test_Constructor_RevertsIfNoChunks() public {
         ProportionalChunkedClawbackVault.VestingChunk[] memory emptyChunks = new ProportionalChunkedClawbackVault.VestingChunk[](0);
-        vm.expectRevert("Must have at least one chunk");
+        vm.expectRevert(ProportionalChunkedClawbackVault.NoChunks.selector);
         new ProportionalChunkedClawbackVault(admin, beneficiary, startTimestamp, endTimestamp - startTimestamp, emptyChunks);
     }
 
@@ -140,7 +140,7 @@ contract ProportionalChunkedClawbackVaultTest is Test {
             totalPercentVested: 90
         });
         
-        vm.expectRevert("Last chunk must be 100% vested");
+        vm.expectRevert(ProportionalChunkedClawbackVault.LastChunkNotFullyVested.selector);
         new ProportionalChunkedClawbackVault(admin, beneficiary, startTimestamp, endTimestamp - startTimestamp, invalidChunks);
     }
 
@@ -148,29 +148,33 @@ contract ProportionalChunkedClawbackVaultTest is Test {
         ProportionalChunkedClawbackVault.VestingChunk[] memory invalidChunks = new ProportionalChunkedClawbackVault.VestingChunk[](2);
         invalidChunks[0] = ProportionalChunkedClawbackVault.VestingChunk({
             timestamp: endTimestamp,
-            totalPercentVested: 100
+            totalPercentVested: 50
         });
         invalidChunks[1] = ProportionalChunkedClawbackVault.VestingChunk({
             timestamp: startTimestamp,
-            totalPercentVested: 0
+            totalPercentVested: 100
         });
         
-        vm.expectRevert("Last chunk must be 100% vested");
+        vm.expectRevert(ProportionalChunkedClawbackVault.ChunksNotAscending.selector);
         new ProportionalChunkedClawbackVault(admin, beneficiary, startTimestamp, endTimestamp - startTimestamp, invalidChunks);
     }
 
     function test_Constructor_RevertsIfPercentDecreasing() public {
-        ProportionalChunkedClawbackVault.VestingChunk[] memory invalidChunks = new ProportionalChunkedClawbackVault.VestingChunk[](2);
+        ProportionalChunkedClawbackVault.VestingChunk[] memory invalidChunks = new ProportionalChunkedClawbackVault.VestingChunk[](3);
         invalidChunks[0] = ProportionalChunkedClawbackVault.VestingChunk({
             timestamp: startTimestamp,
             totalPercentVested: 50
         });
         invalidChunks[1] = ProportionalChunkedClawbackVault.VestingChunk({
+            timestamp: startTimestamp + 1,
+            totalPercentVested: 40
+        });
+        invalidChunks[2] = ProportionalChunkedClawbackVault.VestingChunk({
             timestamp: endTimestamp,
-            totalPercentVested: 25
+            totalPercentVested: 100
         });
         
-        vm.expectRevert("Last chunk must be 100% vested");
+        vm.expectRevert(ProportionalChunkedClawbackVault.PercentVestedDecreasing.selector);
         new ProportionalChunkedClawbackVault(admin, beneficiary, startTimestamp, endTimestamp - startTimestamp, invalidChunks);
     }
 

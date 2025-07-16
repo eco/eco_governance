@@ -4,10 +4,15 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {VestingWallet} from "@openzeppelin/contracts/finance/VestingWallet.sol";
 
 /// @title ProportionalChunkedClawbackVault
-/// @notice A vesting wallet with an admin-controlled clawback mechanism for unvested tokens.
+/// @notice A proportional vesting schedule with a clawback mechanism for unvested tokens.
+/// @dev Vesting is proportional to the total allocation of the token at the time of vesting, compatible with new tokens sent to vault. 
 /// @dev Inherits from OpenZeppelin's VestingWallet. The admin can claw back unvested tokens at any time.
 contract ProportionalChunkedClawbackVault is VestingWallet {
 
+    /// @notice Represents a vesting milestone in the schedule.
+    /// @dev Each chunk specifies a timestamp and the cumulative percent vested at that time.
+    /// @param timestamp The UNIX timestamp at which this vesting milestone occurs.
+    /// @param totalPercentVested The cumulative percent (0-100) of the total allocation vested at this timestamp.
     struct VestingChunk {
         uint64 timestamp;
         uint64 totalPercentVested;
@@ -18,35 +23,57 @@ contract ProportionalChunkedClawbackVault is VestingWallet {
     /// @param amount The amount of tokens clawed back.
     event Clawback(address indexed token, uint256 amount);
 
+    /// @notice Thrown when a non-admin attempts to perform a clawback.
     error UnauthorizedClawback();
+
+    /// @notice Thrown when there are no unvested tokens to claw back.
     error NothingToClawback();
+
+    /// @notice Thrown when the vesting chunks array is empty.
+    error NoChunks();
+
+    /// @notice Thrown when the last vesting chunk does not reach 100% vested.
+    error LastChunkNotFullyVested();
+
+    /// @notice Thrown when vesting chunk timestamps are not strictly ascending.
+    error ChunksNotAscending();
+
+    /// @notice Thrown when a chunk's total percent vested is less than the previous chunk.
+    error PercentVestedDecreasing();
+
+    /// @notice Thrown when a chunk's total percent vested exceeds 100%.
+    error PercentVestedExceeds100();
 
     /// @notice The address with permission to claw back unvested tokens.
     address public immutable admin;
 
+    /// @notice The array of vesting chunks, each specifying a timestamp and cumulative percent vested.
     VestingChunk[] public chunks;
 
+    /// @notice Indicates whether the clawback has been executed.
     bool public clawedBack;
-
-    /// @notice Creates a new ProportionalChunkedClawbackVault.
-    /// @param _admin The address with clawback privileges.
+    
+    /// @notice Constructs a new ProportionalChunkedClawbackVault contract.
+    /// @param _admin The address with permission to claw back unvested tokens.
     /// @param _beneficiary The address that will receive vested tokens.
+    /// @param startTimestamp The start timestamp of the vesting schedule.
+    /// @param durationSeconds The duration of the vesting schedule in seconds.
     /// @param _chunks The array of vesting chunks, each specifying a timestamp and cumulative percent vested.
     constructor(address _admin, address _beneficiary, uint64 startTimestamp, uint64 durationSeconds, VestingChunk[] memory _chunks) 
         VestingWallet(_beneficiary, startTimestamp, durationSeconds)
     {
         admin = _admin;
         
-        require(_chunks.length > 0, "Must have at least one chunk");
-        require(_chunks[_chunks.length - 1].totalPercentVested == 100, "Last chunk must be 100% vested");
+        if (_chunks.length == 0) revert NoChunks();
+        if (_chunks[_chunks.length - 1].totalPercentVested != 100) revert LastChunkNotFullyVested();
         
         uint256 prevTimestamp = 0;
         uint256 prevPercentVested = 0;
         
         for (uint256 i = 0; i < _chunks.length; i++) {
-            require(_chunks[i].timestamp > prevTimestamp, "Chunks must be in ascending order");
-            require(_chunks[i].totalPercentVested >= prevPercentVested, "Percent vested must be non-decreasing");
-            require(_chunks[i].totalPercentVested <= 100, "Percent vested cannot exceed 100");
+            if (_chunks[i].timestamp <= prevTimestamp) revert ChunksNotAscending();
+            if (_chunks[i].totalPercentVested < prevPercentVested) revert PercentVestedDecreasing();
+            if (_chunks[i].totalPercentVested > 100) revert PercentVestedExceeds100();
             
             chunks.push(_chunks[i]);
             prevTimestamp = _chunks[i].timestamp;
@@ -95,12 +122,14 @@ contract ProportionalChunkedClawbackVault is VestingWallet {
     /**
      * @dev Virtual implementation of the vesting formula. This returns the amount vested, as a function of time, for
      * an asset given its total historical allocation.
+     * @dev The vested amount at a given timestamp corresponds to the proportion in the chunk with the highest timestamp less than or equal to the given timestamp.
      */
     function _vestingSchedule(uint256 totalAllocation, uint64 timestamp) internal view override returns (uint256) {
         if (timestamp < start()) {
             return 0;
         }
         
+        // If the clawback has been executed or the timestamp is after the end of the vesting schedule, return the total allocation.
         if (clawedBack || timestamp >= start() + duration()) {
             return totalAllocation;
         }
