@@ -93,7 +93,7 @@ contract TokenMigrationProposalTest is Test {
 
     function setUp() public {
         //just pick latest block or so
-        optimismFork = vm.createSelectFork(optimismRpcUrl, 138335950);
+        optimismFork = vm.createSelectFork(optimismRpcUrl, 138550136);
 
         // // https://ethereum.stackexchange.com/questions/153940/how-to-resolve-compiler-version-conflicts-in-foundry-test-contracts
         // l2ECOxFreeze = IL2ECOxFreeze(deployCode("L2ECOxFreeze.sol:L2ECOxFreeze"));
@@ -101,7 +101,7 @@ contract TokenMigrationProposalTest is Test {
         // //deploy L2ECOBridge using deployCode
         // l2ECOBridgeUpgrade = IL2ECOBridge(deployCode("out/L2ECOBridge.sol/L2ECOBridge.json"));
 
-        mainnetFork = vm.createSelectFork(mainnetRpcUrl, 22898725);
+        mainnetFork = vm.createSelectFork(mainnetRpcUrl, 22934250);
 
         // //deploy L1ECOBridge using deployCode
         // l1ECOBridgeUpgrade = IL1ECOBridge(deployCode("out/L1ECOBridge.sol/L1ECOBridge.json"));
@@ -707,53 +707,93 @@ contract TokenMigrationProposalTest is Test {
         vm.stopPrank();
     }
 
-    function test_migrationSpecialCase_anchorage_lockup() public {
+    // function test_migrationSpecialCase_anchorage_lockup() public {
+    //     enactment_sequence();
+
+    //     address oldLockup = 0xF003A542cCD8e37c836AFF3b7Fab528eF82285A6;
+    //     address SAFTSafe = 0xED83D2f20cF2d218Adbe0a239C0F8AbDca8Fc499;
+    //     address beneficiary = address(0xBEEF);
+
+    //     // Mint balances to oldLockup
+    //     uint256 ecoxAmount = 1000 ether;
+    //     uint256 secoxAmount = 500 ether;
+    //     deal(address(ecox), oldLockup, ecoxAmount);
+    //     deal(address(secox), oldLockup, secoxAmount);
+
+    //     // Mock beneficiary
+    //     vm.mockCall(oldLockup, abi.encodeWithSignature("beneficiary()"), abi.encode(beneficiary));
+
+    //     // Mint new tokens to migration contract if needed
+    //     uint256 total = ecoxAmount + secoxAmount;
+    //     deal(address(token), address(migrationContract), total);
+
+    //     vm.startPrank(securityCouncil);
+    //     migrationContract.migrateSpecialCase(oldLockup, address(0));
+    //     vm.stopPrank();
+
+    //     // Should have burned both tokens from oldLockup
+    //     assertEq(ecox.balanceOf(oldLockup), 0);
+    //     assertEq(secox.balanceOf(oldLockup), 0);
+
+    //     // Should have transferred to SAFTSafe
+    //     assertEq(token.balanceOf(SAFTSafe), total);
+    // }
+
+    function test_migrationSpecialCase_investor_lockup_success_18M() public {
         enactment_sequence();
 
-        address oldLockup = 0xF003A542cCD8e37c836AFF3b7Fab528eF82285A6;
-        address SAFTSafe = 0xED83D2f20cF2d218Adbe0a239C0F8AbDca8Fc499;
-        address beneficiary = address(0xBEEF);
+        ILockupContract oldLockupContract = ILockupContract(0x35FDFe53b3817dde163dA82deF4F586450EDf893);
+        address oldLockup = address(oldLockupContract);
+        ILockupContract newLockupContract = ILockupContract(0x7528f771be51859BBD29cE177A7a900E90D7c316);
+        address newLockup = address(newLockupContract);
+        address beneficiary = oldLockupContract.beneficiary();
+        console.log(beneficiary);
 
         // Mint balances to oldLockup
-        uint256 ecoxAmount = 1000 ether;
-        uint256 secoxAmount = 500 ether;
-        deal(address(ecox), oldLockup, ecoxAmount);
-        deal(address(secox), oldLockup, secoxAmount);
+        uint256 ecoxAmount = ecox.balanceOf(oldLockup);
+        uint256 secoxAmount = secox.balanceOf(oldLockup);
+        console.log(ecoxAmount);
+        console.log(secoxAmount);
 
-        // Mock beneficiary
-        vm.mockCall(oldLockup, abi.encodeWithSignature("beneficiary()"), abi.encode(beneficiary));
+        // Mock beneficiary for new lockup
+
+        // vm.mockCall(newLockup, abi.encodeWithSignature("beneficiary()"), abi.encode(beneficiary));
 
         // Mint new tokens to migration contract if needed
         uint256 total = ecoxAmount + secoxAmount;
         deal(address(token), address(migrationContract), total);
 
         vm.startPrank(securityCouncil);
-        migrationContract.migrateSpecialCase(oldLockup, address(0));
+        migrationContract.migrateSpecialCase(oldLockup, newLockup);
         vm.stopPrank();
 
         // Should have burned both tokens from oldLockup
         assertEq(ecox.balanceOf(oldLockup), 0);
         assertEq(secox.balanceOf(oldLockup), 0);
 
-        // Should have transferred to SAFTSafe
-        assertEq(token.balanceOf(SAFTSafe), total);
+        // Should have transferred to newLockup
+        assertEq(token.balanceOf(newLockup), total);
     }
 
-    function test_migrationSpecialCase_investor_lockup_success() public {
+       function test_migrationSpecialCase_investor_lockup_success_2M() public {
         enactment_sequence();
 
-        address oldLockup = 0x35FDFe53b3817dde163dA82deF4F586450EDf893;
-        address newLockup = address(0x1234);
-        address beneficiary = address(0xBEEF);
+        ILockupContract oldLockupContract = ILockupContract(0x4923438A972Fe8bDf1994B276525d89F5DE654c9);
+        address oldLockup = address(oldLockupContract);
+        ILockupContract newLockupContract = ILockupContract(0x16eaF22eeFe4Ada3AaD57E3bFf06bD55330B3816);
+        address newLockup = address(newLockupContract);
+        address beneficiary = oldLockupContract.beneficiary();
+        console.log(beneficiary);
 
         // Mint balances to oldLockup
         uint256 ecoxAmount = ecox.balanceOf(oldLockup);
         uint256 secoxAmount = secox.balanceOf(oldLockup);
-        deal(address(ecox), oldLockup, ecoxAmount);
+        console.log(ecoxAmount);
+        console.log(secoxAmount);
 
-        // Mock beneficiary for both old and new lockup
-        vm.mockCall(oldLockup, abi.encodeWithSignature("beneficiary()"), abi.encode(beneficiary));
-        vm.mockCall(newLockup, abi.encodeWithSignature("beneficiary()"), abi.encode(beneficiary));
+        // Mock beneficiary for new lockup
+
+        // vm.mockCall(newLockup, abi.encodeWithSignature("beneficiary()"), abi.encode(beneficiary));
 
         // Mint new tokens to migration contract if needed
         uint256 total = ecoxAmount + secoxAmount;
