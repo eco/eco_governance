@@ -15,8 +15,8 @@ contract L2ECOxFreeze is L2ECOx, PausableUpgradeable {
 
     /// Re-init for V2
     function reinitializeV2() public reinitializer(2) {
-        address newTokenRoleAdmin = 0xCF2A6B4bc14A1FEf0862c9583b61B1beeDE980C2; //security council for now
-        pausers[newTokenRoleAdmin] = true;
+        address newPauser = 0x1e9545DA7120e07c8Bd580F92051f1154A7A3dBf; // address owned by BVI entity
+        pausers[newPauser] = true;
         _pause();
     }
 

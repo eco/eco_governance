@@ -1,3 +1,1 @@
-- add tests for new token
-- make excalidraw of entire flow
 - add Uniswap burn? 
