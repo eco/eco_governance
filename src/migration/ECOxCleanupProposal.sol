@@ -62,7 +62,8 @@ contract ECOxCleanupProposal is Proposal {
         // Upgrade ECOx implementation to ECOxZero
         IECOxProxy(ecox).setImplementation(ecoxZeroImpl);
 
-        // Grant burner permissions
+        // Grant permissions
         ECOx(ecox).updateBurners(burnerContract, true);
+        ECOx(ecox).setPauser(address(burnerContract));
     }
 }

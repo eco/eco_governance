@@ -8,7 +8,7 @@ import {ECOxZero} from "src/migration/upgrades/ECOxZero.sol";
 import {ECOxCleanupProposal} from "src/migration/ECOxCleanupProposal.sol";
 import {ECOxBurner} from "src/migration/ECOxBurner.sol";
 
-contract CleanupECOxBalancesProposalTest is Test {
+contract ECOxCleanupProposalTest is Test {
     uint256 mainnetFork;
     string mainnetRpcUrl = vm.envString("MAINNET_RPC_URL");
 
@@ -16,20 +16,19 @@ contract CleanupECOxBalancesProposalTest is Test {
     address constant ECOX_MAINNET = 0xcccD1Ba9f7acD6117834E0D28F25645dECb1736a;
     address constant POLICY = 0x8c02D4cc62F79AcEB652321a9f8988c0f6E71E68;
     address constant SECURITY_COUNCIL = 0xCF2A6B4bc14A1FEf0862c9583b61B1beeDE980C2;
-    address constant TEST_HOLDER = 0x3a16f2Fee32827a9E476d0c87E454aB7C75C92D7; // sECOx contract, but has ECOx balance
+    address constant TEST_HOLDER = 0xcccD1Ba9f7acD6117834E0D28F25645dECb1736a; // ECOx contract, but has ECOx balance for some reason
 
     ECOxBurner burner;
     ECOxCleanupProposal proposal;
     ECOxZero ecoxZeroImpl;
     ECOx ecox;
 
-    // Variables for live test
-    address public deployedECOxZero;
-    address public deployedProposal;
-    address public deployedECOxBurner;
+
+    address public deployedProposal = 0x66e69b3af8058561335B88d3a56F099af8dBdd3f;
+    address public deployedECOxBurner = 0x430d367389E9e032391B52278dd82afD2FF90F1E;
 
     function setUp() public {
-        mainnetFork = vm.createSelectFork(mainnetRpcUrl, 22597199); // Use a recent block
+        mainnetFork = vm.createSelectFork(mainnetRpcUrl, 22997414); // Use a recent block
         ecox = ECOx(ECOX_MAINNET);
         
         // Deploy ECOxZero implementation
@@ -85,6 +84,11 @@ contract CleanupECOxBalancesProposalTest is Test {
         uint256 finalTotalSupply = ecox.totalSupply();
         console.log("Final total supply:", finalTotalSupply);
         assertEq(finalTotalSupply, initialTotalSupply - initialBalance, "Total supply should decrease by burned amount");
+
+        // Check that token is still paused after upgrade
+        bool isPaused = ecox.paused();
+        console.log("Token paused state after upgrade:", isPaused);
+        assertTrue(isPaused, "Token should remain paused after upgrade");
     }
 
     function test_enactment_upgrade_and_burn_live() public {
@@ -114,9 +118,9 @@ contract CleanupECOxBalancesProposalTest is Test {
         console.log("Initial name:", initialName);
         console.log("Initial symbol:", initialSymbol);
 
-        // Impersonate policy to enact proposal (upgrade implementation and grant burner permission)
-        vm.startPrank(POLICY);
-        ECOxCleanupProposal(deployedProposal).enacted(deployedProposal);
+        // Impersonate security council to approve the proposal
+        vm.startPrank(SECURITY_COUNCIL);
+        Policy(POLICY).enact(deployedProposal);
         vm.stopPrank();
 
         // Check that name and symbol changed to "0xgone"
@@ -148,6 +152,11 @@ contract CleanupECOxBalancesProposalTest is Test {
         uint256 finalTotalSupply = ecox.totalSupply();
         console.log("Final total supply:", finalTotalSupply);
         assertEq(finalTotalSupply, 0, "Total supply should be zero after burning all balances");
+
+        // Check that token is still paused after upgrade
+        bool isPaused = ecox.paused();
+        console.log("Token paused state after upgrade:", isPaused);
+        assertTrue(isPaused, "Token should remain paused after upgrade");
     }
 
     function readHolderAddressesFromCSV() internal view returns (address[] memory) {
