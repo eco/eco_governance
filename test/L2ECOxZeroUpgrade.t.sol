@@ -428,17 +428,19 @@ contract L2ECOxZeroUpgradeTest is Test {
         // vm.expectEmit(true, false, false, true, address(l1Messenger));
         // emit SentMessageExtension1(address(l1ECOBridge), 0);
         
-        // console.log("About to expectEmit: UpgradeL2ECOx");
-        // vm.expectEmit(address(l1ECOBridge));
-        // emit UpgradeL2ECOx(address(optimismL2ECOxZeroImpl));
+
         
-        // console.log("About to expectCall: l1Messenger.sendMessage");
-        // vm.expectCall(address(l1Messenger), abi.encodeWithSelector(
-        //     l1Messenger.sendMessage.selector, 
-        //     address(l2ECOBridge), 
-        //     message, 
-        //     10000
-        // ));
+        // console.log("About to expectEmit: SentMessage");
+        // vm.expectEmit(true, false, false, false, address(l1Messenger));
+        // emit SentMessage(address(l2ECOBridge), address(l1ECOBridge), "", currentNonce, 10000);
+        
+        console.log("About to expectCall: l1Messenger.sendMessage");
+        vm.expectCall(address(l1Messenger), abi.encodeWithSelector(
+            l1Messenger.sendMessage.selector, 
+            address(l2ECOBridge), 
+            message, 
+            10000
+        ));
         
         // Enact the proposal via policy (prank as security council)
         vm.prank(securityCouncil);
@@ -466,11 +468,9 @@ contract L2ECOxZeroUpgradeTest is Test {
         // vm.expectEmit(true, false, false, false, address(l2Messenger));
         // emit RelayedMessage(msgHash);
         
-        // vm.expectEmit(false, false, false, true, address(l2ECOBridge));
-        // emit UpgradeECOxImplementation(address(optimismL2ECOxZeroImpl));
+
         
-        // vm.expectEmit(true, false, false, false, address(L2ECOX_PROXY));
-        // emit Upgraded(address(optimismL2ECOxZeroImpl));
+
         
         // Expect l2ECOBridge.upgradeECOx call
         bytes memory call = abi.encodeWithSelector(
@@ -530,6 +530,8 @@ contract L2ECOxZeroUpgradeTest is Test {
         console.log("Total supply before burnBalances:", totalSupplyBefore);
         console.log("TEST_USER balance before:", balance1Before);
         console.log("TEST_USER_2 balance before:", balance2Before);
+        
+
         
         // Call burnBalances
         address[] memory accounts = new address[](2);
