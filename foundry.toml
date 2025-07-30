@@ -17,6 +17,7 @@ fs_permissions = [
 
 [rpc_endpoints]
 mainnet = "${MAINNET_RPC_URL}"
+optimism = "${OPTIMISM_RPC_URL}"
 
 [etherscan]
 mainnet = { key = "${ETHERSCAN_API_KEY}" }

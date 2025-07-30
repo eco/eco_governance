@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.0;
 
 import {Proposal} from "../../lib/currency-1.5/contracts/governance/community/proposals/Proposal.sol";
 import {IL1ECOBridge} from "./interfaces/IL1ECOBridge.sol";
