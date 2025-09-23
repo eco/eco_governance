@@ -32,13 +32,7 @@ contract DeployTokenScript is Script {
         console.log("Token implementation deployed at:", address(tokenImplementation));
 
         // Prepare initialization data
-        bytes memory initData = abi.encodeWithSelector(
-            Token.initialize.selector,
-            admin,
-            pauser,
-            name,
-            symbol
-        );
+        bytes memory initData = abi.encodeWithSelector(Token.initialize.selector, admin, pauser, name, symbol);
 
         // Deploy the proxy contract
         tokenProxy = new TokenProxy(address(tokenImplementation), initData);
@@ -57,15 +51,19 @@ contract DeployTokenScript is Script {
         console.log("Token symbol:", token.symbol());
         console.log("Token decimals:", token.decimals());
         console.log("Token total supply:", token.totalSupply());
-        
+
         // Verification on Etherscan
         console.log("\n=== ETHERSCAN VERIFICATION ===");
         console.log("To verify on Etherscan, run:");
         console.log("forge verify-contract", address(tokenImplementation), "src/Token.sol:Token --chain-id 1");
-        console.log("forge verify-contract", address(tokenProxy), "src/TokenProxy.sol:TokenProxy --chain-id 1 --constructor-args", vm.toString(abi.encode(address(tokenImplementation), initData)));
-
+        console.log(
+            "forge verify-contract",
+            address(tokenProxy),
+            "src/TokenProxy.sol:TokenProxy --chain-id 1 --constructor-args",
+            vm.toString(abi.encode(address(tokenImplementation), initData))
+        );
 
         console.log("Token implementation deployed at:", address(tokenImplementation));
         console.log("TokenProxy deployed at:", address(tokenProxy));
     }
-} 
+}

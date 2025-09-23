@@ -32,4 +32,4 @@ contract GetLockupBeneficiary is Script {
             codeSize := extcodesize(beneficiary)
         }
     }
-} 
+}

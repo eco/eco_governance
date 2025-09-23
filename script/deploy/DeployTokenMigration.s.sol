@@ -12,8 +12,6 @@ import {Token} from "src/Token.sol";
 
 import {IL1CrossDomainMessenger} from "@eth-optimism/contracts/L1/messaging/IL1CrossDomainMessenger.sol";
 
-
-
 contract DeployTokenMigration is Script {
     function setUp() public {}
 
@@ -39,12 +37,8 @@ contract DeployTokenMigration is Script {
 
         // --- 2. Deploy TokenMigrationContract ---
         vm.startBroadcast();
-        TokenMigrationContract migrationContract = new TokenMigrationContract(
-            ecox,
-            ECOxStakingBurnable(secox),
-            newToken,
-            admin
-        );
+        TokenMigrationContract migrationContract =
+            new TokenMigrationContract(ecox, ECOxStakingBurnable(secox), newToken, admin);
         console.log("TokenMigrationContract deployed at:", address(migrationContract));
 
         // --- 3. Deploy TokenMigrationProposal ---
@@ -68,4 +62,4 @@ contract DeployTokenMigration is Script {
         vm.stopBroadcast();
         console.log("TokenMigrationProposal deployed at:", address(proposal));
     }
-} 
+}

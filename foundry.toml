@@ -9,13 +9,15 @@ ast = true
 
 fs_permissions = [
   { access = "read", path = "./test/migration/files" },
-  { access = "read", path = "./out" }
+  { access = "read", path = "./out" },
+  { access = "read", path = "./data" }
 ]
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
 
 [rpc_endpoints]
 mainnet = "${MAINNET_RPC_URL}"
+optimism = "${OPTIMISM_RPC_URL}"
 
 [etherscan]
 mainnet = { key = "${ETHERSCAN_API_KEY}" }

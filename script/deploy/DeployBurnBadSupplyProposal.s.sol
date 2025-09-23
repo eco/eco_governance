@@ -33,10 +33,15 @@ contract DeployBurnBadSupplyProposalScript is Script {
         console.log("Proposal name:", burnBadSupplyProposal.name());
         console.log("Proposal description:", burnBadSupplyProposal.description());
         console.log("Proposal URL:", burnBadSupplyProposal.url());
-        
+
         // Verification on Etherscan
         console.log("\n=== ETHERSCAN VERIFICATION ===");
         console.log("To verify on Etherscan, run:");
-        console.log("forge verify-contract", address(burnBadSupplyProposal), "src/migration/BurnBadSupplyProposal.sol:BurnBadSupplyProposal --chain-id 1 --constructor-args", vm.toString(abi.encode(newToken, migrationContract)));
+        console.log(
+            "forge verify-contract",
+            address(burnBadSupplyProposal),
+            "src/migration/BurnBadSupplyProposal.sol:BurnBadSupplyProposal --chain-id 1 --constructor-args",
+            vm.toString(abi.encode(newToken, migrationContract))
+        );
     }
-} 
+}
