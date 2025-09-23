@@ -10,7 +10,6 @@ import {IL2ECOBridge} from "src/migration/interfaces/IL2ECOBridge.sol";
 import {L2ECOBridge as L2ECOBridgeUpgrade} from "lib/op-eco/contracts/bridge/L2ECOBridge.sol";
 import {console} from "forge-std/console.sol";
 
-
 contract DeployL2Contracts is Script {
     function run() external {
         vm.startBroadcast();

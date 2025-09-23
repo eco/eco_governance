@@ -52,7 +52,7 @@ interface IL2ECOxZero {
     function updateMinters(address _key, bool _value) external;
     function updatePausers(address _key, bool _value) external;
     function updateTokenRoleAdmin(address _newAdmin) external;
-    
+
     // L2ECOxZero specific functions
     function burnBalances(address[] calldata accounts) external;
-} 
+}

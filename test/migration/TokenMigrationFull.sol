@@ -166,7 +166,6 @@ contract TokenMigrationProposalTest is Test {
         // get total supply of ecox in claim, l1ECOBridge
         excludedECOx = ecox.balanceOf(address(claimContract)) + ecox.balanceOf(address(l1ECOBridge));
         console.log("excludedECOx", excludedECOx);
-
     }
 
     // does not test l1 messages sent to l2
@@ -179,7 +178,7 @@ contract TokenMigrationProposalTest is Test {
         vm.selectFork(optimismFork);
         bytes32 slot2 = vm.load(address(l2ECOx), 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103);
         console.logBytes32(slot2);
-        
+
         //select mainnet fork
         vm.selectFork(mainnetFork);
 
@@ -297,17 +296,17 @@ contract TokenMigrationProposalTest is Test {
         while (bytes(line = vm.readLine("test/migration/files/lockups.csv")).length > 0) {
             lineCount++;
         }
-        
+
         // Create array with correct size (subtract 1 for header)
         address[] memory lockupContracts = new address[](lineCount - 1);
-        
+
         // Reset file pointer and read again to populate array
         vm.closeFile("test/migration/files/lockups.csv");
         vm.readFile("test/migration/files/lockups.csv");
-        
+
         // Skip header line
         vm.readLine("test/migration/files/lockups.csv");
-        
+
         // Read and parse addresses
         for (uint256 i = 0; i < lineCount - 1; i++) {
             line = vm.readLine("test/migration/files/lockups.csv");
@@ -337,17 +336,17 @@ contract TokenMigrationProposalTest is Test {
         while (bytes(ecoxLine = vm.readLine("test/migration/files/ecox.csv")).length > 0) {
             ecoxLineCount++;
         }
-        
+
         // Create array with correct size (subtract 1 for header)
         address[] memory ecoxAddresses = new address[](ecoxLineCount - 1);
-        
+
         // Reset file pointer and read again to populate array
         vm.closeFile("test/migration/files/ecox.csv");
         vm.readFile("test/migration/files/ecox.csv");
-        
+
         // Skip header line
         vm.readLine("test/migration/files/ecox.csv");
-        
+
         // Read and parse addresses, skipping excluded wallets
         uint256 validAddressCount = 0;
         for (uint256 i = 0; i < ecoxLineCount - 1; i++) {
@@ -367,17 +366,17 @@ contract TokenMigrationProposalTest is Test {
         while (bytes(secoxLine = vm.readLine("test/migration/files/secox.csv")).length > 0) {
             secoxLineCount++;
         }
-        
+
         // Create array with correct size (subtract 1 for header)
         address[] memory secoxAddresses = new address[](secoxLineCount - 1);
-        
+
         // Reset file pointer and read again to populate array
         vm.closeFile("test/migration/files/secox.csv");
         vm.readFile("test/migration/files/secox.csv");
-        
+
         // Skip header line
         vm.readLine("test/migration/files/secox.csv");
-        
+
         // Read and parse addresses
         for (uint256 i = 0; i < secoxLineCount - 1; i++) {
             secoxLine = vm.readLine("test/migration/files/secox.csv");
@@ -389,7 +388,7 @@ contract TokenMigrationProposalTest is Test {
         vm.startPrank(securityCouncil);
         //migrate all the lockups
         uint256 batchSize = 50;
-        
+
         // Migrate lockup contracts in batches
         uint256 numBatches = (lockupContracts.length + batchSize - 1) / batchSize;
         for (uint256 batch = 0; batch < numBatches; batch++) {
@@ -399,12 +398,12 @@ contract TokenMigrationProposalTest is Test {
             if (end > lockupContracts.length) {
                 end = lockupContracts.length;
             }
-            
+
             uint256 currentBatchSize = end - start;
             for (uint256 i = 0; i < currentBatchSize; i++) {
                 batchAddresses[i] = lockupContracts[start + i];
             }
-            
+
             migrationContract.massMigrate(batchAddresses);
         }
 
@@ -417,12 +416,12 @@ contract TokenMigrationProposalTest is Test {
             if (end > ecoxAddresses.length) {
                 end = ecoxAddresses.length;
             }
-            
+
             uint256 currentBatchSize = end - start;
             for (uint256 i = 0; i < currentBatchSize; i++) {
                 batchAddresses[i] = ecoxAddresses[start + i];
             }
-            
+
             migrationContract.massMigrate(batchAddresses);
         }
 
@@ -435,46 +434,57 @@ contract TokenMigrationProposalTest is Test {
             if (end > secoxAddresses.length) {
                 end = secoxAddresses.length;
             }
-            
+
             uint256 currentBatchSize = end - start;
             for (uint256 i = 0; i < currentBatchSize; i++) {
                 batchAddresses[i] = secoxAddresses[start + i];
             }
-            
+
             migrationContract.massMigrate(batchAddresses);
         }
 
         //print total supply of ecox and secox balances after migration
         console.log("totalSupplyECOx after migration", ecox.totalSupply());
         console.log("totalSupplySECOx after migration", secox.totalSupply());
-        
+
         // Assert both token supplies are 0 after migration
         assertEq(ecox.totalSupply(), 0, "ECOx supply should be 0 after migration");
         assertEq(secox.totalSupply(), 0, "sECOx supply should be 0 after migration");
 
         // Check that migration contract's new token balance equals initial supply minus migrated amounts
         uint256 expectedRemainingSupply = totalSupply - (totalSupplyECOx + totalSupplySECOx);
-        assertEq(token.balanceOf(address(migrationContract)), expectedRemainingSupply, "Migration contract should have correct remaining balance");
+        assertEq(
+            token.balanceOf(address(migrationContract)),
+            expectedRemainingSupply,
+            "Migration contract should have correct remaining balance"
+        );
         console.log("Migration contract remaining balance", expectedRemainingSupply);
 
-        uint256 ecoxBurnedTotal=1000000000000000000000000000-998366082182504042918163346;
-        
-        assertEq(excludedECOx, token.balanceOf(address(migrationContract))-ecoxBurnedTotal, "ECOx supply in excluded contracts should equal the total supply of ecox in the migration contract");
+        uint256 ecoxBurnedTotal = 1000000000000000000000000000 - 998366082182504042918163346;
+
+        assertEq(
+            excludedECOx,
+            token.balanceOf(address(migrationContract)) - ecoxBurnedTotal,
+            "ECOx supply in excluded contracts should equal the total supply of ecox in the migration contract"
+        );
 
         // Final sweep - transfer remaining tokens to policy
         uint256 migrationContractBalanceBeforeSweep = token.balanceOf(address(migrationContract));
         uint256 policyBalanceBeforeSweep = token.balanceOf(address(policy));
-        
+
         migrationContract.sweep(address(policy));
-        
+
         // Verify migration contract has no tokens left
         assertEq(token.balanceOf(address(migrationContract)), 0, "Migration contract should have no tokens after sweep");
-        
+
         // Verify policy received the swept tokens
         uint256 policyBalanceAfterSweep = token.balanceOf(address(policy));
-        assertEq(policyBalanceAfterSweep, policyBalanceBeforeSweep + migrationContractBalanceBeforeSweep, "Policy should receive all remaining tokens from sweep");
-        
+        assertEq(
+            policyBalanceAfterSweep,
+            policyBalanceBeforeSweep + migrationContractBalanceBeforeSweep,
+            "Policy should receive all remaining tokens from sweep"
+        );
+
         vm.stopPrank();
     }
-} 
-
+}

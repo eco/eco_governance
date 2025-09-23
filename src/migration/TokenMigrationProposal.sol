@@ -31,7 +31,6 @@ contract TokenMigrationProposal is Proposal {
     uint32 public immutable l2gas;
     address public immutable minter;
 
-
     constructor(
         ECOx _ecox,
         ECOxStaking _secox,

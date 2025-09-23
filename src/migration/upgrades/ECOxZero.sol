@@ -10,7 +10,7 @@ import {ERC20Pausable} from "../../../lib/currency-1.5/contracts/currency/ERC20P
  * @dev Identical to ECOx, but with name and symbol set to '0xgone'.
  */
 contract ECOxZero is TotalSupplySnapshots {
-       //////////////////////////////////////////////
+    //////////////////////////////////////////////
     //////////////////// VARS ////////////////////
     //////////////////////////////////////////////
 
@@ -59,14 +59,9 @@ contract ECOxZero is TotalSupplySnapshots {
         _;
     }
 
-    constructor(
-        Policy _policy,
-        address _pauser
-    ) TotalSupplySnapshots(_policy, "0xgone", "0xgone", _pauser) {}
+    constructor(Policy _policy, address _pauser) TotalSupplySnapshots(_policy, "0xgone", "0xgone", _pauser) {}
 
-    function initialize(
-        address _self
-    ) public virtual override onlyConstruction {
+    function initialize(address _self) public virtual override onlyConstruction {
         super.initialize(_self);
         pauser = ERC20Pausable(_self).pauser();
     }
@@ -85,4 +80,4 @@ contract ECOxZero is TotalSupplySnapshots {
         snapshotters[_key] = _value;
         emit UpdatedSnapshotters(_key, _value);
     }
-} 
+}

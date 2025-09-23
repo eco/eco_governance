@@ -41,11 +41,7 @@ contract DeployECOxCleanupScript is Script {
 
         // Deploy ECOxCleanupProposal
         console.log("Deploying ECOxCleanupProposal...");
-        cleanupProposal = new ECOxCleanupProposal(
-            ecoxAddress,
-            address(ecoxBurner),
-            address(ecoxZero)
-        );
+        cleanupProposal = new ECOxCleanupProposal(ecoxAddress, address(ecoxBurner), address(ecoxZero));
         console.log("ECOxCleanupProposal deployed at:", address(cleanupProposal));
 
         vm.stopBroadcast();
@@ -54,12 +50,27 @@ contract DeployECOxCleanupScript is Script {
         console.log("ECOxZero implementation:", address(ecoxZero));
         console.log("ECOxBurner:", address(ecoxBurner));
         console.log("ECOxCleanupProposal:", address(cleanupProposal));
-        
+
         // Verification on Etherscan
         console.log("\n=== ETHERSCAN VERIFICATION ===");
         console.log("To verify on Etherscan, run:");
-        console.log("forge verify-contract", address(ecoxZero), "src/migration/upgrades/ECOxZero.sol:ECOxZero --chain-id 1 --constructor-args", vm.toString(abi.encode(policy, pauser)));
-        console.log("forge verify-contract", address(ecoxBurner), "src/migration/ECOxBurner.sol:ECOxBurner --chain-id 1 --constructor-args", vm.toString(abi.encode(ecoxAddress, owner)));
-        console.log("forge verify-contract", address(cleanupProposal), "src/migration/ECOxCleanupProposal.sol:ECOxCleanupProposal --chain-id 1 --constructor-args", vm.toString(abi.encode(ecoxAddress, address(ecoxBurner), address(ecoxZero))));
+        console.log(
+            "forge verify-contract",
+            address(ecoxZero),
+            "src/migration/upgrades/ECOxZero.sol:ECOxZero --chain-id 1 --constructor-args",
+            vm.toString(abi.encode(policy, pauser))
+        );
+        console.log(
+            "forge verify-contract",
+            address(ecoxBurner),
+            "src/migration/ECOxBurner.sol:ECOxBurner --chain-id 1 --constructor-args",
+            vm.toString(abi.encode(ecoxAddress, owner))
+        );
+        console.log(
+            "forge verify-contract",
+            address(cleanupProposal),
+            "src/migration/ECOxCleanupProposal.sol:ECOxCleanupProposal --chain-id 1 --constructor-args",
+            vm.toString(abi.encode(ecoxAddress, address(ecoxBurner), address(ecoxZero)))
+        );
     }
-} 
+}

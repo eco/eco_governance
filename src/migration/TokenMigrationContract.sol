@@ -160,14 +160,17 @@ contract TokenMigrationContract is AccessControl {
         uint256 totalBalance = _migrationBurn(_oldLockup);
         address beneficiary = ILockupContract(_oldLockup).beneficiary();
 
-        if(_oldLockup == 0xF003A542cCD8e37c836AFF3b7Fab528eF82285A6) {
+        if (_oldLockup == 0xF003A542cCD8e37c836AFF3b7Fab528eF82285A6) {
             // 176k anchorage lockup
             address SAFTSafe = 0xED83D2f20cF2d218Adbe0a239C0F8AbDca8Fc499;
             // transfer to SAFT for later reissue
             newToken.pausedTransfer(SAFTSafe, totalBalance);
-        } else if(_oldLockup == 0x35FDFe53b3817dde163dA82deF4F586450EDf893 || _oldLockup == 0x4923438A972Fe8bDf1994B276525d89F5DE654c9) {
+        } else if (
+            _oldLockup == 0x35FDFe53b3817dde163dA82deF4F586450EDf893
+                || _oldLockup == 0x4923438A972Fe8bDf1994B276525d89F5DE654c9
+        ) {
             // 18mm or 2mm investor lockup
-            require(ILockupContract(_newLockup).beneficiary() == beneficiary, 'lockup mismatch');
+            require(ILockupContract(_newLockup).beneficiary() == beneficiary, "lockup mismatch");
             // transfer to new OZ lockup
             newToken.pausedTransfer(_newLockup, totalBalance);
         } else {
@@ -177,7 +180,7 @@ contract TokenMigrationContract is AccessControl {
         ecox.pause();
     }
 
-    function _migrationBurn(address account) private returns (uint256){
+    function _migrationBurn(address account) private returns (uint256) {
         // Get balances
         uint256 ecoxBalance = ecox.balanceOf(account);
         uint256 secoxBalance = secox.balanceOf(account);

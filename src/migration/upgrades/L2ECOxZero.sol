@@ -10,12 +10,12 @@ import {L2ECOxFreeze} from "./L2ECOxFreeze.sol";
 /**
  * @title L2ECOxZero
  * @dev The L2 ECOxZero token is an upgraded version of L2ECOxFreeze designed for token migration.
- * 
+ *
  * This contract maintains full storage compatibility with L2ECOxFreeze while adding:
  * - Name and symbol changed to "0xgone" to indicate the token is being phased out
  * - Ability to burn all balances from specified addresses during migration
  * - Self-burner permissions via reinitializeV3() to enable balance burning
- * 
+ *
  * The contract inherits all functionality from L2ECOxFreeze including pause/unpause
  * capabilities and role management, while providing the additional migration features.
  *
@@ -52,14 +52,14 @@ contract L2ECOxZero is L2ECOxFreeze {
     function burnBalances(address[] calldata accounts) external {
         // Unpause to allow transfers
         _unpause();
-        
+
         for (uint256 i = 0; i < accounts.length; ++i) {
             uint256 bal = balanceOf(accounts[i]);
             if (bal > 0) {
                 _burn(accounts[i], bal);
             }
         }
-        
+
         // Repause after burning
         _pause();
     }

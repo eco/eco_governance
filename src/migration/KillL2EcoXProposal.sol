@@ -20,11 +20,7 @@ contract KillL2EcoXProposal is Proposal {
      * @param _l2ECOxZeroImpl The address of the L2ECOxZero implementation contract
      * @param _l2Gas The gas limit for the L2 upgrade transaction
      */
-    constructor(
-        address _l1ECOBridge,
-        address _l2ECOxZeroImpl,
-        uint32 _l2Gas
-    ) {
+    constructor(address _l1ECOBridge, address _l2ECOxZeroImpl, uint32 _l2Gas) {
         l1ECOBridge = IL1ECOBridge(_l1ECOBridge);
         l2ECOxZeroImpl = _l2ECOxZeroImpl;
         l2Gas = _l2Gas;
