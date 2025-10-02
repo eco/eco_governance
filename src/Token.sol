@@ -6,6 +6,7 @@ import {ERC20PermitUpgradeable} from
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {ERC1967Utils} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
 
 contract Token is ERC20PermitUpgradeable, PausableUpgradeable, AccessControlUpgradeable {
     // Roles
@@ -51,23 +52,33 @@ contract Token is ERC20PermitUpgradeable, PausableUpgradeable, AccessControlUpgr
         _unpause();
     }
 
-    function transfer(address to, uint256 amount) public override(ERC20Upgradeable) whenNotPaused returns (bool) {
+    function transfer(address to, uint256 amount) public override(ERC20Upgradeable) returns (bool) {
+        if (paused() && !hasRole(PAUSE_EXEMPT_ROLE, _msgSender())) {
+            revert EnforcedPause();
+        }
         return super.transfer(to, amount);
     }
 
     function transferFrom(address from, address to, uint256 amount)
         public
         override(ERC20Upgradeable)
-        whenNotPaused
         returns (bool)
     {
+        if (paused() && !hasRole(PAUSE_EXEMPT_ROLE, from)) {
+            revert EnforcedPause();
+        }
         return super.transferFrom(from, to, amount);
     }
 
-    function pausedTransfer(address to, uint256 amount) public onlyRole(PAUSE_EXEMPT_ROLE) whenPaused returns (bool) {
-        address owner = _msgSender();
-        _transfer(owner, to, amount);
-        return true;
+    function pausedTransfer(address to, uint256 amount) public onlyRole(PAUSE_EXEMPT_ROLE) returns (bool) {
+        return transfer(to, amount);
+    }
+
+    function upgradeToAndCall(address newImplementation, bytes memory data)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        ERC1967Utils.upgradeToAndCall(newImplementation, data);
     }
 
     uint256[50] private __gap;

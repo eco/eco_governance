@@ -345,72 +345,7 @@ contract TokenTest is Test {
         vm.stopPrank();
     }
 
-    function test_TransfersBlockedWhenPaused() public {
-        // Mint tokens to user1
-        vm.startPrank(admin);
-        token.mint(user1, 100);
-        vm.stopPrank();
-        // Pause the contract
-        vm.startPrank(pauser);
-        token.pause();
-        vm.stopPrank();
-        // Transfers should revert
-        vm.startPrank(user1);
-        vm.expectRevert(abi.encodeWithSignature("EnforcedPause()"));
-        token.transfer(user2, 10);
-        vm.expectRevert(abi.encodeWithSignature("EnforcedPause()"));
-        token.transferFrom(user1, user2, 10);
-        vm.stopPrank();
-    }
-
-    function test_PausedTransferFailsIfNotPaused() public {
-        // Grant PAUSE_EXEMPT_ROLE to user1
-        vm.startPrank(admin);
-        token.grantRole(PAUSE_EXEMPT_ROLE, user1);
-        token.mint(user1, 1000);
-        vm.stopPrank();
-        // pausedTransfer should fail if not paused
-        vm.startPrank(user1);
-        vm.expectRevert(abi.encodeWithSignature("ExpectedPause()"));
-        token.pausedTransfer(user2, 10);
-        vm.stopPrank();
-    }
-
-    function test_PausedTransferFailsIfLacksRole() public {
-        // Ensure contract is paused
-        vm.startPrank(pauser);
-        token.pause();
-        vm.stopPrank();
-        // pausedTransfer should fail if caller lacks role
-        vm.startPrank(user2);
-        vm.expectRevert(
-            abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", user2, PAUSE_EXEMPT_ROLE)
-        );
-        token.pausedTransfer(user1, 10);
-        vm.stopPrank();
-    }
-
-    function test_PausedTransferSucceedsWithRole() public {
-        // Grant PAUSE_EXEMPT_ROLE and mint tokens to user1
-        vm.startPrank(admin);
-        token.grantRole(PAUSE_EXEMPT_ROLE, user1);
-        token.mint(user1, 100);
-        vm.stopPrank();
-
-        // Pause the contract
-        vm.startPrank(pauser);
-        token.pause();
-        vm.stopPrank();
-
-        // Verify paused transfer works with role
-        vm.startPrank(user1);
-        token.pausedTransfer(user2, 50);
-        assertEq(token.balanceOf(user1), 50);
-        assertEq(token.balanceOf(user2), 50);
-        vm.stopPrank();
-    }
-
-    function test_PausedTransferFailsIfInsufficientBalance() public {
+    function test_TransferFailsWhenPausedIfInsufficientBalance() public {
         // Grant PAUSE_EXEMPT_ROLE to user1
         vm.startPrank(admin);
         token.grantRole(PAUSE_EXEMPT_ROLE, user1);
@@ -420,10 +355,10 @@ contract TokenTest is Test {
         vm.startPrank(pauser);
         token.pause();
         vm.stopPrank();
-        // pausedTransfer should fail if insufficient balance
+        // transfer should fail if insufficient balance even with role
         vm.startPrank(user1);
         vm.expectRevert(abi.encodeWithSignature("ERC20InsufficientBalance(address,uint256,uint256)", user1, 50, 100));
-        token.pausedTransfer(user2, 100);
+        token.transfer(user2, 100);
         vm.stopPrank();
     }
 
@@ -435,6 +370,160 @@ contract TokenTest is Test {
         vm.expectEmit(true, false, false, false);
         emit Unpaused(pauser);
         token.unpause();
+        vm.stopPrank();
+    }
+
+    // Comprehensive transfer tests
+    function test_TransferWhenNotPausedWithoutRole() public {
+        vm.startPrank(admin);
+        token.mint(user1, 100);
+        vm.stopPrank();
+
+        vm.startPrank(user1);
+        token.transfer(user2, 30);
+        assertEq(token.balanceOf(user1), 70);
+        assertEq(token.balanceOf(user2), 30);
+        vm.stopPrank();
+    }
+
+    function test_TransferWhenNotPausedWithRole() public {
+        vm.startPrank(admin);
+        token.grantRole(PAUSE_EXEMPT_ROLE, user1);
+        token.mint(user1, 100);
+        vm.stopPrank();
+
+        vm.startPrank(user1);
+        token.transfer(user2, 30);
+        assertEq(token.balanceOf(user1), 70);
+        assertEq(token.balanceOf(user2), 30);
+        vm.stopPrank();
+    }
+
+    function test_TransferWhenPausedWithoutRole() public {
+        vm.startPrank(admin);
+        token.mint(user1, 100);
+        vm.stopPrank();
+
+        vm.startPrank(pauser);
+        token.pause();
+        vm.stopPrank();
+
+        vm.startPrank(user1);
+        vm.expectRevert(abi.encodeWithSignature("EnforcedPause()"));
+        token.transfer(user2, 30);
+        vm.stopPrank();
+    }
+
+    function test_TransferWhenPausedWithRole() public {
+        vm.startPrank(admin);
+        token.grantRole(PAUSE_EXEMPT_ROLE, user1);
+        token.mint(user1, 100);
+        vm.stopPrank();
+
+        vm.startPrank(pauser);
+        token.pause();
+        vm.stopPrank();
+
+        vm.startPrank(user1);
+        token.transfer(user2, 30);
+        assertEq(token.balanceOf(user1), 70);
+        assertEq(token.balanceOf(user2), 30);
+        vm.stopPrank();
+    }
+
+    // Comprehensive transferFrom tests
+    function test_TransferFromWhenNotPausedWithoutRole() public {
+        vm.startPrank(admin);
+        token.mint(user1, 100);
+        vm.stopPrank();
+
+        vm.startPrank(user1);
+        token.approve(user2, 50);
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        token.transferFrom(user1, user2, 30);
+        assertEq(token.balanceOf(user1), 70);
+        assertEq(token.balanceOf(user2), 30);
+        vm.stopPrank();
+    }
+
+    function test_TransferFromWhenNotPausedFromHasRole() public {
+        vm.startPrank(admin);
+        token.grantRole(PAUSE_EXEMPT_ROLE, user1);
+        token.mint(user1, 100);
+        vm.stopPrank();
+
+        vm.startPrank(user1);
+        token.approve(user2, 50);
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        token.transferFrom(user1, user2, 30);
+        assertEq(token.balanceOf(user1), 70);
+        assertEq(token.balanceOf(user2), 30);
+        vm.stopPrank();
+    }
+
+    function test_TransferFromWhenPausedWithoutRole() public {
+        vm.startPrank(admin);
+        token.mint(user1, 100);
+        vm.stopPrank();
+
+        vm.startPrank(user1);
+        token.approve(user2, 50);
+        vm.stopPrank();
+
+        vm.startPrank(pauser);
+        token.pause();
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        vm.expectRevert(abi.encodeWithSignature("EnforcedPause()"));
+        token.transferFrom(user1, user2, 30);
+        vm.stopPrank();
+    }
+
+    function test_TransferFromWhenPausedFromHasRole() public {
+        vm.startPrank(admin);
+        token.grantRole(PAUSE_EXEMPT_ROLE, user1);
+        token.mint(user1, 100);
+        vm.stopPrank();
+
+        vm.startPrank(user1);
+        token.approve(user2, 50);
+        vm.stopPrank();
+
+        vm.startPrank(pauser);
+        token.pause();
+        vm.stopPrank();
+
+        // user2 (caller) doesn't have role, but user1 (from) does - should succeed
+        vm.startPrank(user2);
+        token.transferFrom(user1, user2, 30);
+        assertEq(token.balanceOf(user1), 70);
+        assertEq(token.balanceOf(user2), 30);
+        vm.stopPrank();
+    }
+
+    function test_TransferFromWhenPausedCallerHasRoleFromDoesNot() public {
+        vm.startPrank(admin);
+        token.grantRole(PAUSE_EXEMPT_ROLE, user2); // Give role to caller, not from
+        token.mint(user1, 100);
+        vm.stopPrank();
+
+        vm.startPrank(user1);
+        token.approve(user2, 50);
+        vm.stopPrank();
+
+        vm.startPrank(pauser);
+        token.pause();
+        vm.stopPrank();
+
+        // user2 (caller) has role, but user1 (from) doesn't - should fail
+        vm.startPrank(user2);
+        vm.expectRevert(abi.encodeWithSignature("EnforcedPause()"));
+        token.transferFrom(user1, user2, 30);
         vm.stopPrank();
     }
 
@@ -602,7 +691,7 @@ contract TokenTest is Test {
         token.burn(user2, 50);
         vm.stopPrank();
 
-        // Test Transfer event from pausedTransfer
+        // Test Transfer event from paused transfer with exempt role
         vm.startPrank(admin);
         token.grantRole(PAUSE_EXEMPT_ROLE, user1);
         token.mint(user1, 100);
@@ -612,7 +701,7 @@ contract TokenTest is Test {
         vm.startPrank(user1);
         vm.expectEmit(true, true, false, true);
         emit Transfer(user1, user2, 40);
-        token.pausedTransfer(user2, 40);
+        token.transfer(user2, 40);
         vm.stopPrank();
     }
 

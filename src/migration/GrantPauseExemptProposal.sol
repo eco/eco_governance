@@ -8,12 +8,14 @@ contract GrantPauseExemptProposal is Proposal {
     address public immutable pauseExemptAddress1;
     address public immutable pauseExemptAddress2;
     address public immutable pauseExemptAddress3;
+    address public immutable pauseExemptAddress4;
 
-    constructor(Token _token, address _addr1, address _addr2, address _addr3) {
+    constructor(Token _token, address _addr1, address _addr2, address _addr3, address _addr4) {
         token = _token;
         pauseExemptAddress1 = _addr1;
         pauseExemptAddress2 = _addr2;
         pauseExemptAddress3 = _addr3;
+        pauseExemptAddress4 = _addr4;
     }
 
     function name() public pure override returns (string memory) {
@@ -34,5 +36,6 @@ contract GrantPauseExemptProposal is Proposal {
         token.grantRole(pauseExemptRole, pauseExemptAddress1);
         token.grantRole(pauseExemptRole, pauseExemptAddress2);
         token.grantRole(pauseExemptRole, pauseExemptAddress3);
+        token.grantRole(pauseExemptRole, pauseExemptAddress4);
     }
 }
