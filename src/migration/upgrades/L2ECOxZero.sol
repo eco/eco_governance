@@ -47,9 +47,11 @@ contract L2ECOxZero is L2ECOxFreeze {
 
     /**
      * @dev Burns the entire ECOx balance of each address in the input array
+     * @dev Restricted to pausers: the function toggles the pause state and destroys
+     * arbitrary balances, so it must never be callable by an unprivileged account
      * @param accounts The array of addresses whose balances will be burned
      */
-    function burnBalances(address[] calldata accounts) external {
+    function burnBalances(address[] calldata accounts) external onlyPauser {
         // Unpause to allow transfers
         _unpause();
 
