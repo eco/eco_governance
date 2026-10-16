@@ -14,7 +14,7 @@ import {L2ECOxFreeze} from "./L2ECOxFreeze.sol";
  * This contract maintains full storage compatibility with L2ECOxFreeze while adding:
  * - Name and symbol changed to "0xgone" to indicate the token is being phased out
  * - Ability to burn all balances from specified addresses during migration
- * - Self-burner permissions via reinitializeV3() to enable balance burning
+ * - Self-burner and self-pauser permissions via reinitializeV3() to enable balance burning
  *
  * The contract inherits all functionality from L2ECOxFreeze including pause/unpause
  * capabilities and role management, while providing the additional migration features.
@@ -43,6 +43,7 @@ contract L2ECOxZero is L2ECOxFreeze {
     function reinitializeV3() public reinitializer(3) {
         // Give this contract burner and pauser permissions
         burners[address(this)] = true;
+        pausers[address(this)] = true;
     }
 
     /**
